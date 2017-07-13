@@ -3,6 +3,8 @@
 #include "stb_sprintf.h"
 #include "b50_timing.h"
 
+#include "HandmadeMath.h"
+
 #define global_variable static 
 #define local_persist static 
 #define internal static 
