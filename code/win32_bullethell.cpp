@@ -3,7 +3,26 @@
 #include "stb_sprintf.h"
 #include "b50_timing.h"
 
-#include "HandmadeMath.h"
+#define GB_MATH_IMPLEMENTATION
+#include "gb_math.h"
+typedef gbVec2 v2;
+typedef gbVec3 v3;
+typedef gbVec4 v4;
+typedef gbMat4 m4;
+
+#include <stdint.h>
+typedef int8_t int8;
+typedef int16_t int16;
+typedef int32_t int32;
+typedef int64_t int64;
+
+typedef uint8_t uint8;
+typedef uint16_t uint16;
+typedef uint32_t uint32;
+typedef uint64_t uint64;
+
+typedef float real32;
+typedef double real64;
 
 #define global_variable static 
 #define local_persist static 
@@ -19,6 +38,7 @@
 #define Terabyte(Value) 1024 * Gigabyte(Value)
 
 #include "win32_opengl.h"
+#include "opengl.cpp"
 
 int Running = 1; 
 int ActiveApp = 1;
@@ -69,6 +89,26 @@ LRESULT CALLBACK WindowProc(HWND   Window,
     return(Result);
 }
 
+struct win32_windowdim 
+{
+    int Width, Height; 
+    int x, y;
+    //int DisplayWidth, DisplayHeight; 
+};
+
+win32_windowdim Win32GetWindowDim(HWND Window)
+{
+    win32_windowdim Dim = {};
+    
+    RECT Rect = {};
+    GetClientRect(Window, &Rect);
+    Dim.x = Rect.left;
+    Dim.y = Rect.top;
+    Dim.Width = Rect.right - Rect.left;
+    Dim.Height = Rect.bottom - Rect.top;
+    return Dim; 
+}
+
 int CALLBACK 
 WinMain(HINSTANCE Instance,
         HINSTANCE PrevInstance, 
@@ -90,8 +130,8 @@ WinMain(HINSTANCE Instance,
                                      WS_OVERLAPPEDWINDOW|WS_VISIBLE,
                                      CW_USEDEFAULT,
                                      CW_USEDEFAULT,
-                                     800,
-                                     600,
+                                     1440,
+                                     900,
                                      0,
                                      0,
                                      Instance, 
@@ -99,6 +139,7 @@ WinMain(HINSTANCE Instance,
         
         
         Win32InitOpenGL(Window);
+        LoadAssets();
         
         time_info TimeInfo = {};
         float FrameRate = 60;
@@ -111,7 +152,14 @@ WinMain(HINSTANCE Instance,
                 TranslateMessage(&Message);
                 DispatchMessage(&Message);
             }
+            
+            win32_windowdim Dim = Win32GetWindowDim(Window);
+            v2 ScreenDim = {(float)Dim.Width, (float)Dim.Height};
+            RunRenderBuffer(ScreenDim, dt);
+            
+            Win32RenderFrame(Window, Dim.Width, Dim.Height);
         }
+        
     }
     
     return 0;
