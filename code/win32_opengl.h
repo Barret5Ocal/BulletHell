@@ -46,6 +46,7 @@ typedef void (APIENTRYP PFNGLUNIFORM4FPROC) (GLint location, GLfloat v0, GLfloat
 typedef void (APIENTRYP PFNGLACTIVETEXTUREPROC) (GLenum texture);
 typedef void (APIENTRYP PFNGLUNIFORM1IPROC) (GLint location, GLint v0);
 typedef void (APIENTRYP PFNGLUNIFORM3FPROC) (GLint location, GLfloat v0, GLfloat v1, GLfloat v2);
+typedef void (APIENTRYP PFNGLUNIFORM1FPROC) (GLint location, GLfloat v0);
 
 PFNGLGENVERTEXARRAYSPROC glGenVertexArrays;
 PFNGLBINDVERTEXARRAYPROC glBindVertexArray; 
@@ -74,6 +75,7 @@ PFNGLUNIFORM4FPROC glUniform4f;
 PFNGLACTIVETEXTUREPROC glActiveTexture;
 PFNGLUNIFORM1IPROC glUniform1i;
 PFNGLUNIFORM3FPROC glUniform3f;
+PFNGLUNIFORM1FPROC glUniform1f; 
 
 void GetGLPointers()
 {
@@ -104,6 +106,8 @@ void GetGLPointers()
     glActiveTexture = (PFNGLACTIVETEXTUREPROC ) GetAnyGLFuncAddress("glActiveTexture");
     glUniform1i = (PFNGLUNIFORM1IPROC) GetAnyGLFuncAddress("glUniform1i");
     glUniform3f = (PFNGLUNIFORM3FPROC) GetAnyGLFuncAddress("glUniform3f");
+    glUniform1f = (PFNGLUNIFORM1FPROC) GetAnyGLFuncAddress("glUniform1f");
+    
 }
 
 

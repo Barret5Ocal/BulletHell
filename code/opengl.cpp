@@ -59,31 +59,76 @@ GLuint LoadShaders(char *VertexShaderCode, char *FragmentShaderCode)
 unsigned int cubeVAO, cubeVBO;
 GLuint Program; 
 GLuint MatrixID;
-GLuint ColorID;
-GLuint LightID; 
-GLuint LightPosID;
 GLuint ViewPosID;
+
 
 GLuint ModelMatID;
 GLuint ViewMatID;
 GLuint ProjectMatID;
 
+
+struct gl_material
+{
+    GLuint Ambient;
+    GLuint Diffuse;
+    GLuint Specular;
+    GLuint Shininess;
+};
+
+gl_material Material; 
+
+
+struct gl_light
+{
+    GLuint Position;
+    GLuint Direction;
+    GLuint CutOff;
+    GLuint OuterCutOff;
+    
+    GLuint Ambient;
+    GLuint Diffuse;
+    GLuint Specular;
+    
+    GLuint Constant;
+    GLuint Linear;
+    GLuint Quadratic;
+    
+};
+
+gl_light Light; 
+
+void SetUniformV3(GLuint Program, char* Name, v3 V3)
+{
+    glUniform3f(glGetUniformLocation(Program, Name), V3.x, V3.y, V3.z);
+}
+
+
+void SetUniformF(GLuint Program, char* Name, real32 Float)
+{
+    glUniform1f(glGetUniformLocation(Program, Name), Float);
+}
+
+void SetUniformM4(GLuint Program, char* Name, m4* M4)
+{
+    glUniformMatrix4fv(glGetUniformLocation(Program, Name), 1, GL_FALSE, &M4->e[0]);
+}
+
 void LoadAssets()
 {
     float vertices[] = {
         -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-        0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
-        0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
-        0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
-        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
-        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
+        0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
         
-        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-        0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-        0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-        0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+        0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+        0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+        0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
         
         -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
         -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
@@ -150,9 +195,34 @@ void LoadAssets()
         R"Fra(
         #version 330 core 
         
-        uniform vec3 ObjColor;
-        uniform vec3 LightColor; 
-        uniform vec3 LightPos; 
+        struct material
+        {
+        vec3 Ambient;
+        vec3 Diffuse;
+        vec3 Specular;
+        float Shininess;
+        }; 
+        
+        uniform material Material;
+        
+        struct light 
+        {
+        vec3 Position;
+        vec3 Direction;
+        float CutOff;
+        float OuterCutOff;
+        
+        vec3 Ambient;
+        vec3 Diffuse;
+        vec3 Specular;
+        
+        float Constant;
+        float Linear;
+        float Quadratic;
+        };
+        
+        uniform light Light; 
+        
         uniform vec3 ViewPos;
         
         in vec3 Normal;
@@ -162,21 +232,19 @@ void LoadAssets()
         
         void main()
         {
-        float AmbientStrength = 0.1; 
-        vec3 Ambient = AmbientStrength * LightColor; 
+        vec3 Ambient = Light.Ambient * Material.Ambient; 
         
         vec3 Norm = normalize(Normal);
-        vec3 LightDir = normalize(LightPos - FragPos);
+        vec3 LightDir = normalize(-Light.Direction);//normalize(Light.Position - FragPos);
         float Diff = max(dot(Norm, LightDir), 0.0);
-        vec3 Diffuse = Diff * LightColor;
+        vec3 Diffuse = Light.Diffuse * (Diff * Material.Diffuse);
         
-        float SpecularStrength = 0.5;
         vec3 ViewDir = normalize(ViewPos - FragPos);
         vec3 ReflectDir = reflect(-LightDir, Norm);  
-        float Spec = pow(max(dot(ViewDir, ReflectDir), 0.0), 32);
-        vec3 Specular = SpecularStrength * Spec * LightColor;  
+        float Spec = pow(max(dot(ViewDir, ReflectDir), 0.0), Material.Shininess);
+        vec3 Specular = Light.Specular * (Spec * Material.Specular);  
         
-        vec3 Result = (Ambient + Diff + Specular) * ObjColor;
+        vec3 Result = (Ambient + Diff + Specular);
         FragColor = vec4(Result, 1.0); 
         } 
         )Fra";
@@ -187,10 +255,26 @@ void LoadAssets()
     ViewMatID = glGetUniformLocation(Program, "View");
     ProjectMatID = glGetUniformLocation(Program, "Projection");
     
-    ColorID = glGetUniformLocation(Program, "ObjColor");
-    LightID = glGetUniformLocation(Program, "LightColor");
-    LightPosID = glGetUniformLocation(Program,  "LightPos");
     ViewPosID = glGetUniformLocation(Program, "ViewPos");
+    
+    Material.Ambient = glGetUniformLocation(Program, "Material.Ambient");
+    Material.Diffuse = glGetUniformLocation(Program, "Material.Diffuse");
+    Material.Specular = glGetUniformLocation(Program,  "Material.Specular");
+    Material.Shininess = glGetUniformLocation(Program, "Material.Shininess");
+    
+    Light.Ambient = glGetUniformLocation(Program, "Light.Ambient");
+    Light.Diffuse = glGetUniformLocation(Program, "Light.Diffuse");
+    Light.Specular = glGetUniformLocation(Program,  "Light.Specular");
+    Light.Position = glGetUniformLocation(Program, "Light.Position");
+    
+    Light.Direction = glGetUniformLocation(Program, "Light.Direction");
+    Light.CutOff = glGetUniformLocation(Program, "Light.CutOff");
+    Light.OuterCutOff = glGetUniformLocation(Program, "Light.OuterCutOff");
+    
+    Light.Constant = glGetUniformLocation(Program, "Light.Constant");
+    Light.Linear = glGetUniformLocation(Program, "Light.Linear");
+    Light.Quadratic = glGetUniformLocation(Program, "Light.Quadratic");
+    
 }
 
 struct matrix_set 
@@ -200,7 +284,7 @@ struct matrix_set
     m4 View;
 };
 
-void SetMatrix(matrix_set *MVP, v3 PosObj, v3 PosCam, v3 Dim, float FoV, v2 ScreenDim, float Angle)
+void SetMatrix(matrix_set *MVP, v3 PosObj, v3 PosCam, v3 Dim, float FoV, v2 ScreenDim, v3 Axis, float Angle)
 {
     
     gb_mat4_perspective(&MVP->Projection, FoV, ScreenDim.x / ScreenDim.y, 0.1f, 100.0f);
@@ -213,7 +297,6 @@ void SetMatrix(matrix_set *MVP, v3 PosObj, v3 PosCam, v3 Dim, float FoV, v2 Scre
     gb_mat4_translate(&ModelTrans, {PosObj.x, PosObj.y,  PosObj.z});
     m4 ModelRotate; 
     gb_mat4_identity(&ModelRotate);
-    v3 Axis = {0.0f, 1.0f, 0.0f};
     
     gb_mat4_rotate(&ModelRotate, Axis, Angle);
     m4 ModelScale;
@@ -223,32 +306,68 @@ void SetMatrix(matrix_set *MVP, v3 PosObj, v3 PosCam, v3 Dim, float FoV, v2 Scre
 
 void RunRenderBuffer(v2 ScreenDim, float dt)
 {
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
+    v3 CubePositions[] = {
+        v3{ 0.0f,  0.0f,  0.0f},
+        v3{2.0f,  5.0f, -15.0f},
+        v3{-1.5f, -2.2f, -2.5f},
+        v3{-3.8f, -2.0f, -12.3f},
+        v3{2.4f, -0.4f, -3.5f},
+        v3{-1.7f,  3.0f, -7.5f},
+        v3{1.3f, -2.0f, -2.5f},
+        v3{1.5f,  2.0f, -2.5f},
+        v3{1.5f,  0.2f, -1.5f},
+        v3{-1.3f,  1.0f, -1.5f}
+    };
     
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glEnable(GL_DEPTH_TEST);
+    //glDepthFunc(GL_LESS);
+    
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
-    
     glUseProgram(Program);
-    v3 CamPos = {0.0f, 1.0f, 3.0f};
-    v3 ObjPos = {0.0f, 0.0f, 0.0f};
-    v3 ObjDim = {1.0f, 1.0f, 1.0f};
-    static float Angle;// = 0.5f;
-    Angle += dt;
-    matrix_set MVP;
-    SetMatrix(&MVP, ObjPos, CamPos, ObjDim, 45.0f, ScreenDim, Angle);
     
-    glUniformMatrix4fv(ModelMatID, 1, GL_FALSE, &MVP.Model.e[0]);
-    glUniformMatrix4fv(ViewMatID, 1, GL_FALSE, &MVP.View.e[0]);
-    glUniformMatrix4fv(ProjectMatID, 1, GL_FALSE, &MVP.Projection.e[0]);
+    v3 LightColor = {1.0f, 1.0f, 1.0f};
+    v3 DiffuseColor = LightColor * v3{0.5f,0.5f,0.5f};
+    v3 AmbientColor = LightColor * v3{0.2f,0.2f,0.2f};
+    glUniform3f(Light.Ambient, 0.1f, 0.1f, 0.1f); 
+    glUniform3f(Light.Diffuse, 0.8f, 0.8f, 0.8f); 
+    glUniform3f(Light.Specular, 1.0f, 1.0f, 1.0f); 
+    glUniform3f(Light.Position, 1.2f, 1.0f, 2.0f); 
+    glUniform3f(Light.Direction, -0.2f, -1.0f, -0.3f); 
+    glUniform1f(Light.CutOff, gb_to_radians(12.5f)); 
+    glUniform1f(Light.OuterCutOff, gb_to_radians(17.5f)); 
     
-    glUniform3f(LightID, 1.0f, 1.0f, 1.0f); 
-    glUniform3f(ColorID, 1.0f, 0.5f, 0.31f); 
-    glUniform3f(LightPosID, 1.2f, 1.0f, 2.0f); 
+    glUniform1f(Light.Constant, 1.0f); 
+    glUniform1f(Light.Linear, 0.09f); 
+    glUniform1f(Light.Quadratic, 0.032f); 
+    
+    v3 CamPos = {0.0f, 0.0f, 3.0f};
     glUniform3f(ViewPosID, CamPos.x, CamPos.y, CamPos.z); 
     
-    glBindVertexArray(cubeVAO);
+    glUniform3f(Material.Ambient, 1.0f, 0.5f, 0.31f); 
+    glUniform3f(Material.Diffuse, 1.0f, 0.5f, 0.31f); 
+    glUniform3f(Material.Specular, 0.5f, 0.5f, 0.5f); 
+    glUniform1f(Material.Shininess, 32.0f); 
     
-    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glBindVertexArray(cubeVAO);
+    for(uint32 Index = 0;
+        Index < 10; 
+        ++Index)
+    {
+        v3 ObjDim = {1.0f, 1.0f, 1.0f};
+        v3 ObjPos = {CubePositions[Index].x, CubePositions[Index].y, CubePositions[Index].z};
+        float Angle = 20.0f * Index;
+        
+        matrix_set MVP;
+        SetMatrix(&MVP, ObjPos, CamPos, ObjDim, 45.0f, ScreenDim, {1.0f, 0.3f, 0.5f}, Angle);
+        
+        
+        glUniformMatrix4fv(ViewMatID, 1, GL_FALSE, &MVP.View.e[0]);
+        glUniformMatrix4fv(ProjectMatID, 1, GL_FALSE, &MVP.Projection.e[0]);
+        glUniformMatrix4fv(ModelMatID, 1, GL_FALSE, &MVP.Model.e[0]);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+    }
+    
+    
 }

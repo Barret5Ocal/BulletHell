@@ -109,6 +109,102 @@ win32_windowdim Win32GetWindowDim(HWND Window)
     return Dim; 
 }
 
+struct input
+{
+    union 
+    {
+        struct 
+        {
+            int MoveUp;
+            int MoveDown;
+            int MoveRight;
+            int MoveLeft;
+        };
+        int E[4];
+    };
+    
+    gbVec2 MousePos; 
+    
+    int LeftMouseClick;
+    int RightMouseClick;
+};
+
+#include <xinput.h>
+
+typedef DWORD WINAPI B50XInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState);
+B50XInputGetState *XInputGetState_;
+#define XInputGetState XInputGetState_
+
+void LoadXInput()
+{
+    HMODULE XInput = LoadLibraryA("xinput1_3.dll");
+    if(XInput)
+    {
+        XInputGetState = (B50XInputGetState *)GetProcAddress(XInput, "XInputGetState");
+    }
+    else
+    {
+        XInput = LoadLibraryA("Xinput1_4.dll");
+        if(XInput)
+        {
+            XInputGetState = (B50XInputGetState *)GetProcAddress(XInput, "XInputGetState");
+        }
+        else 
+        {
+            XInput = LoadLibraryA("Xinput9_1_0.dll");
+            if(XInput)
+            {
+                XInputGetState = (B50XInputGetState *)GetProcAddress(XInput, "XInputGetState");
+            }
+            else
+            {
+                InvalidCodePath;
+            }
+        }
+    }
+}
+
+int Win32IsDown(int Code)
+{
+    short Button = GetKeyState(Code);
+    int Toggle = (Button & 0xFF);
+    int Down = (Button >> 15) & 0x1; 
+    
+    return Down;
+}
+
+gbVec2 Win32GetMousePos(win32_windowdim Dim)
+{
+    POINT Point; 
+    GetCursorPos(&Point);
+    return {(float)(Point.x - Dim.x), (float)(Point.y - Dim.y)};
+}
+
+void Win32GetInput(input *Input, win32_windowdim Dim)
+{
+    Input->MoveUp = Win32IsDown(0x57);
+    Input->MoveDown = Win32IsDown(0x53);
+    Input->MoveLeft = Win32IsDown(0x41);
+    Input->MoveRight = Win32IsDown(0x44);
+    
+    Input->MousePos = Win32GetMousePos(Dim);
+    
+    XINPUT_STATE State;
+    if(XInputGetState(0, &State) != ERROR_DEVICE_NOT_CONNECTED)
+    {
+        XINPUT_GAMEPAD Pad = State.Gamepad;
+        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_UP) Input->MoveUp = 1;
+        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) Input->MoveDown = 1;
+        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT)Input->MoveLeft = 1;
+        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT)Input->MoveRight = 1;
+        
+        if(Pad.sThumbLX > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) Input->MoveRight = 1; 
+        if(Pad.sThumbLX < -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) Input->MoveLeft = 1; 
+        if(Pad.sThumbLY > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) Input->MoveUp = 1; 
+        if(Pad.sThumbLY < -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) Input->MoveDown = 1; 
+    }
+}
+
 int CALLBACK 
 WinMain(HINSTANCE Instance,
         HINSTANCE PrevInstance, 
@@ -154,6 +250,11 @@ WinMain(HINSTANCE Instance,
             }
             
             win32_windowdim Dim = Win32GetWindowDim(Window);
+            
+            input Input = {};
+            if(ActiveApp)
+                Win32GetInput(&Input, Dim);
+            
             v2 ScreenDim = {(float)Dim.Width, (float)Dim.Height};
             RunRenderBuffer(ScreenDim, dt);
             
