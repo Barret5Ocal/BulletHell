@@ -1,7 +1,8 @@
 struct render_setup
 {
     v3 CameraPos;
-    v4 Quanterian;
+    v3 RotAxis;
+    float Angle;
 };
 
 struct render_element
@@ -12,8 +13,10 @@ struct render_element
     v3 Scale;
 };
 
-void Update(input *Input)
+void Update(input *Input, memory_arena *RenderBuffer)
 {
+    render_setup *Setup = (render_setup *)PushStruct(RenderBuffer, render_setup);
+    
     
 }
 

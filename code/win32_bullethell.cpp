@@ -262,7 +262,7 @@ WinMain(HINSTANCE Instance,
             if(ActiveApp)
                 Win32GetInput(&Input, Dim);
             
-            Update(&Input);
+            Update(&Input, &RenderBuffer);
             
             v2 ScreenDim = {(float)Dim.Width, (float)Dim.Height};
             RunRenderBuffer(ScreenDim, dt);
