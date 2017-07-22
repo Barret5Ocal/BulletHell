@@ -37,6 +37,8 @@ typedef double real64;
 #define Gigabyte(Value) 1024 * Megabyte(Value)
 #define Terabyte(Value) 1024 * Gigabyte(Value)
 
+#include "win32_memory.h"
+
 #include "win32_opengl.h"
 #include "opengl.cpp"
 
@@ -205,6 +207,8 @@ void Win32GetInput(input *Input, win32_windowdim Dim)
     }
 }
 
+#include "bullethell.cpp"
+
 int CALLBACK 
 WinMain(HINSTANCE Instance,
         HINSTANCE PrevInstance, 
@@ -233,9 +237,12 @@ WinMain(HINSTANCE Instance,
                                      Instance, 
                                      0);
         
-        
+        LoadXInput();
         Win32InitOpenGL(Window);
         LoadAssets();
+        
+        memory_arena RenderBuffer = {};
+        AllocateArena(&RenderBuffer, Megabyte(4));
         
         time_info TimeInfo = {};
         float FrameRate = 60;
@@ -254,6 +261,8 @@ WinMain(HINSTANCE Instance,
             input Input = {};
             if(ActiveApp)
                 Win32GetInput(&Input, Dim);
+            
+            Update(&Input);
             
             v2 ScreenDim = {(float)Dim.Width, (float)Dim.Height};
             RunRenderBuffer(ScreenDim, dt);
