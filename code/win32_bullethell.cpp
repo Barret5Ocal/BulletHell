@@ -39,6 +39,7 @@ typedef double real64;
 
 #include "win32_memory.h"
 
+#include "bullethell.h"
 #include "win32_opengl.h"
 #include "opengl.cpp"
 
@@ -117,10 +118,8 @@ struct input
     {
         struct 
         {
-            int MoveUp;
-            int MoveDown;
-            int MoveRight;
-            int MoveLeft;
+            int32 MoveVertical;
+            int32 MoveHorizontal;
         };
         int E[4];
     };
@@ -184,10 +183,13 @@ gbVec2 Win32GetMousePos(win32_windowdim Dim)
 
 void Win32GetInput(input *Input, win32_windowdim Dim)
 {
-    Input->MoveUp = Win32IsDown(0x57);
-    Input->MoveDown = Win32IsDown(0x53);
-    Input->MoveLeft = Win32IsDown(0x41);
-    Input->MoveRight = Win32IsDown(0x44);
+    int32 MoveUp = -Win32IsDown(0x57);
+    int32 MoveDown = Win32IsDown(0x53);
+    int32 MoveLeft = -Win32IsDown(0x41);
+    int32 MoveRight = Win32IsDown(0x44);
+    
+    Input->MoveVertical = MoveUp + MoveDown;
+    Input->MoveHorizontal = MoveLeft + MoveRight;
     
     Input->MousePos = Win32GetMousePos(Dim);
     
@@ -195,15 +197,21 @@ void Win32GetInput(input *Input, win32_windowdim Dim)
     if(XInputGetState(0, &State) != ERROR_DEVICE_NOT_CONNECTED)
     {
         XINPUT_GAMEPAD Pad = State.Gamepad;
-        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_UP) Input->MoveUp = 1;
-        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) Input->MoveDown = 1;
-        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT)Input->MoveLeft = 1;
-        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT)Input->MoveRight = 1;
+        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_UP) MoveUp = -1;
+        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) MoveDown = 1;
+        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT)MoveLeft = -1;
+        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT)MoveRight = 1;
         
-        if(Pad.sThumbLX > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) Input->MoveRight = 1; 
-        if(Pad.sThumbLX < -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) Input->MoveLeft = 1; 
-        if(Pad.sThumbLY > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) Input->MoveUp = 1; 
-        if(Pad.sThumbLY < -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) Input->MoveDown = 1; 
+        Input->MoveVertical = MoveUp + MoveDown;
+        Input->MoveHorizontal = MoveLeft + MoveRight;
+        
+        if(Pad.sThumbLX > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) MoveRight = 1; 
+        if(Pad.sThumbLX < -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) MoveLeft = -1; 
+        if(Pad.sThumbLY > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) MoveUp = -1; 
+        if(Pad.sThumbLY < -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) MoveDown = 1;
+        
+        Input->MoveVertical = MoveUp + MoveDown;
+        Input->MoveHorizontal = MoveLeft + MoveRight;
     }
 }
 
@@ -241,8 +249,11 @@ WinMain(HINSTANCE Instance,
         Win32InitOpenGL(Window);
         LoadAssets();
         
+        game_state GameState = {};
         memory_arena RenderBuffer = {};
         AllocateArena(&RenderBuffer, Megabyte(4));
+        
+        Setup(&GameState);
         
         time_info TimeInfo = {};
         float FrameRate = 60;
@@ -262,10 +273,10 @@ WinMain(HINSTANCE Instance,
             if(ActiveApp)
                 Win32GetInput(&Input, Dim);
             
-            Update(&Input, &RenderBuffer);
+            Update(&GameState, &Input, dt, &RenderBuffer);
             
             v2 ScreenDim = {(float)Dim.Width, (float)Dim.Height};
-            RunRenderBuffer(ScreenDim, dt);
+            RunRenderBuffer(ScreenDim, dt, &RenderBuffer);
             
             Win32RenderFrame(Window, Dim.Width, Dim.Height);
         }

@@ -284,13 +284,19 @@ struct matrix_set
     m4 View;
 };
 
-void SetMatrix(matrix_set *MVP, v3 PosObj, v3 PosCam, v3 Dim, float FoV, v2 ScreenDim, v3 Axis, float Angle)
+void SetMatrix(matrix_set *MVP, v3 PosObj, v3 Scale,  v3 Axis, float Angle, v3 CamPos, v3 ViewDir, float FoV, v2 ScreenDim)
 {
     
     gb_mat4_perspective(&MVP->Projection, FoV, ScreenDim.x / ScreenDim.y, 0.1f, 100.0f);
     
     gb_mat4_identity(&MVP->View); 
-    gb_mat4_look_at(&MVP->View, PosCam, PosObj, {0.0f, 1.0f, 0.0f});
+    v3 Right; 
+    gb_vec3_cross(&Right, ViewDir, {0.0f, 1.0f, 0.0f});
+    v3 Up; 
+    gb_vec3_cross(&Up, ViewDir, Right);
+    gb_mat4_look_at(&MVP->View, CamPos, 
+                    ViewDir,
+                    Up);
     
     gb_mat4_identity(&MVP->Model);
     m4 ModelTrans;
@@ -300,24 +306,12 @@ void SetMatrix(matrix_set *MVP, v3 PosObj, v3 PosCam, v3 Dim, float FoV, v2 Scre
     
     gb_mat4_rotate(&ModelRotate, Axis, Angle);
     m4 ModelScale;
-    gb_mat4_scale(&ModelScale, {Dim.x, Dim.y, Dim.z});
+    gb_mat4_scale(&ModelScale, Scale);
     MVP->Model = ModelTrans * ModelScale * ModelRotate; 
 }
 
-void RunRenderBuffer(v2 ScreenDim, float dt)
+void RunRenderBuffer(v2 ScreenDim, float dt, memory_arena *RenderBuffer)
 {
-    v3 CubePositions[] = {
-        v3{ 0.0f,  0.0f,  0.0f},
-        v3{2.0f,  5.0f, -15.0f},
-        v3{-1.5f, -2.2f, -2.5f},
-        v3{-3.8f, -2.0f, -12.3f},
-        v3{2.4f, -0.4f, -3.5f},
-        v3{-1.7f,  3.0f, -7.5f},
-        v3{1.3f, -2.0f, -2.5f},
-        v3{1.5f,  2.0f, -2.5f},
-        v3{1.5f,  0.2f, -1.5f},
-        v3{-1.3f,  1.0f, -1.5f}
-    };
     
     glEnable(GL_DEPTH_TEST);
     //glDepthFunc(GL_LESS);
@@ -342,26 +336,26 @@ void RunRenderBuffer(v2 ScreenDim, float dt)
     glUniform1f(Light.Linear, 0.09f); 
     glUniform1f(Light.Quadratic, 0.032f); 
     
-    v3 CamPos = {0.0f, 0.0f, 3.0f};
-    glUniform3f(ViewPosID, CamPos.x, CamPos.y, CamPos.z); 
-    
-    glUniform3f(Material.Ambient, 1.0f, 0.5f, 0.31f); 
-    glUniform3f(Material.Diffuse, 1.0f, 0.5f, 0.31f); 
-    glUniform3f(Material.Specular, 0.5f, 0.5f, 0.5f); 
-    glUniform1f(Material.Shininess, 32.0f); 
-    
     glBindVertexArray(cubeVAO);
+    
+    render_setup *Setup = (render_setup *)RenderBuffer->Memory;
+    
+    glUniform3f(ViewPosID, Setup->CameraPos.x, Setup->CameraPos.y, Setup->CameraPos.z); 
+    
+    render_element *FirstElement = (render_element *)(Setup + 1);
     for(uint32 Index = 0;
-        Index < 10; 
+        Index < Setup->Count;
         ++Index)
     {
-        v3 ObjDim = {1.0f, 1.0f, 1.0f};
-        v3 ObjPos = {CubePositions[Index].x, CubePositions[Index].y, CubePositions[Index].z};
-        float Angle = 20.0f * Index;
-        
+        render_element *Element = FirstElement + Index;
         matrix_set MVP;
-        SetMatrix(&MVP, ObjPos, CamPos, ObjDim, 45.0f, ScreenDim, {1.0f, 0.3f, 0.5f}, Angle);
+        SetMatrix(&MVP, Element->Position, Element->Scale, Element->Axis, Element->Angle, Setup->CameraPos, Setup->ViewDir, 45.0f, ScreenDim);
         
+        render_material *RenMaterial = &Element->Material;
+        glUniform3f(Material.Ambient, RenMaterial->Ambient.x, RenMaterial->Ambient.y,RenMaterial->Ambient.z); 
+        glUniform3f(Material.Diffuse, RenMaterial->Diffuse.x, RenMaterial->Diffuse.y,RenMaterial->Diffuse.z); 
+        glUniform3f(Material.Specular, RenMaterial->Specular.x, RenMaterial->Specular.y,RenMaterial->Specular.z); 
+        glUniform1f(Material.Shininess, RenMaterial->Shininess); 
         
         glUniformMatrix4fv(ViewMatID, 1, GL_FALSE, &MVP.View.e[0]);
         glUniformMatrix4fv(ProjectMatID, 1, GL_FALSE, &MVP.Projection.e[0]);
@@ -369,5 +363,6 @@ void RunRenderBuffer(v2 ScreenDim, float dt)
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
     
-    
+    Setup->Count = 0;
+    ResetArena(RenderBuffer);
 }
