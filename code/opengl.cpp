@@ -284,19 +284,21 @@ struct matrix_set
     m4 View;
 };
 
-void SetMatrix(matrix_set *MVP, v3 PosObj, v3 Scale,  v3 Axis, float Angle, v3 CamPos, v3 ViewDir, float FoV, v2 ScreenDim)
+void SetMatrix(matrix_set *MVP, v3 PosObj, v3 Scale,  v3 Axis, float Angle, v3 CamPos, v3 ViewDir, float FoV, v2 ScreenDim, float dt)
 {
     
     gb_mat4_perspective(&MVP->Projection, FoV, ScreenDim.x / ScreenDim.y, 0.1f, 100.0f);
     
+    v3 Look = CamPos + v3{0.0f, 0.0f, 1.0f};
+    //v3 Look = ViewDir - CamPos;
     gb_mat4_identity(&MVP->View); 
     v3 Right; 
-    gb_vec3_cross(&Right, ViewDir, {0.0f, 1.0f, 0.0f});
+    gb_vec3_cross(&Right, Look, {0.0f, -1.0f, 0.0f});
     v3 Up; 
-    gb_vec3_cross(&Up, ViewDir, Right);
-    gb_mat4_look_at(&MVP->View, CamPos, 
-                    ViewDir,
-                    Up);
+    gb_vec3_cross(&Up, Look, Right);
+    gb_vec3_norm(&Up, Up);
+    //gb_mat4_look_at(&MVP->View, CamPos, ViewDir, Up);
+    gb_mat4_look_at(&MVP->View, CamPos, Look, Up);
     
     gb_mat4_identity(&MVP->Model);
     m4 ModelTrans;
@@ -327,7 +329,7 @@ void RunRenderBuffer(v2 ScreenDim, float dt, memory_arena *RenderBuffer)
     glUniform3f(Light.Ambient, 0.1f, 0.1f, 0.1f); 
     glUniform3f(Light.Diffuse, 0.8f, 0.8f, 0.8f); 
     glUniform3f(Light.Specular, 1.0f, 1.0f, 1.0f); 
-    glUniform3f(Light.Position, 1.2f, 1.0f, 2.0f); 
+    glUniform3f(Light.Position, -1.2f, 1.0f, -5.0f); 
     glUniform3f(Light.Direction, -0.2f, -1.0f, -0.3f); 
     glUniform1f(Light.CutOff, gb_to_radians(12.5f)); 
     glUniform1f(Light.OuterCutOff, gb_to_radians(17.5f)); 
@@ -349,7 +351,7 @@ void RunRenderBuffer(v2 ScreenDim, float dt, memory_arena *RenderBuffer)
     {
         render_element *Element = FirstElement + Index;
         matrix_set MVP;
-        SetMatrix(&MVP, Element->Position, Element->Scale, Element->Axis, Element->Angle, Setup->CameraPos, Setup->ViewDir, 45.0f, ScreenDim);
+        SetMatrix(&MVP, Element->Position, Element->Scale, Element->Axis, Element->Angle, Setup->CameraPos, Setup->ViewDir, 45.0f, ScreenDim, dt);
         
         render_material *RenMaterial = &Element->Material;
         glUniform3f(Material.Ambient, RenMaterial->Ambient.x, RenMaterial->Ambient.y,RenMaterial->Ambient.z); 

@@ -32,4 +32,5 @@ struct game_state
 {
     v3 CameraPos;
     v3 ViewDir; 
+    float ViewDegree; 
 };

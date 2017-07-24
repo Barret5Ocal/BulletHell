@@ -112,24 +112,6 @@ win32_windowdim Win32GetWindowDim(HWND Window)
     return Dim; 
 }
 
-struct input
-{
-    union 
-    {
-        struct 
-        {
-            int32 MoveVertical;
-            int32 MoveHorizontal;
-        };
-        int E[4];
-    };
-    
-    gbVec2 MousePos; 
-    
-    int LeftMouseClick;
-    int RightMouseClick;
-};
-
 #include <xinput.h>
 
 typedef DWORD WINAPI B50XInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState);
@@ -165,6 +147,28 @@ void LoadXInput()
     }
 }
 
+struct input
+{
+    union 
+    {
+        struct 
+        {
+            int32 MoveVertical;
+            int32 MoveHorizontal;
+            
+            int32 CameraVertical;
+            int32 CameraHorizontal;
+            
+        };
+        int E[4];
+    };
+    
+    gbVec2 MousePos; 
+    
+    int LeftMouseClick;
+    int RightMouseClick;
+};
+
 int Win32IsDown(int Code)
 {
     short Button = GetKeyState(Code);
@@ -181,15 +185,23 @@ gbVec2 Win32GetMousePos(win32_windowdim Dim)
     return {(float)(Point.x - Dim.x), (float)(Point.y - Dim.y)};
 }
 
-void Win32GetInput(input *Input, win32_windowdim Dim)
+void Win32GetInput(input *Input, win32_windowdim Dim, game_state *GameState)
 {
-    int32 MoveUp = -Win32IsDown(0x57);
-    int32 MoveDown = Win32IsDown(0x53);
+    int32 MoveUp = Win32IsDown(0x57);
+    int32 MoveDown = -Win32IsDown(0x53);
     int32 MoveLeft = -Win32IsDown(0x41);
     int32 MoveRight = Win32IsDown(0x44);
     
     Input->MoveVertical = MoveUp + MoveDown;
     Input->MoveHorizontal = MoveLeft + MoveRight;
+    
+    int32 CameraUp = -Win32IsDown(VK_UP);
+    int32 CameraDown = Win32IsDown(VK_DOWN);
+    int32 CameraLeft = -Win32IsDown(VK_LEFT);
+    int32 CameraRight = Win32IsDown(VK_RIGHT);
+    
+    Input->CameraVertical = CameraUp + CameraDown;
+    Input->CameraHorizontal = CameraLeft + CameraRight;
     
     Input->MousePos = Win32GetMousePos(Dim);
     
@@ -271,7 +283,7 @@ WinMain(HINSTANCE Instance,
             
             input Input = {};
             if(ActiveApp)
-                Win32GetInput(&Input, Dim);
+                Win32GetInput(&Input, Dim, &GameState);
             
             Update(&GameState, &Input, dt, &RenderBuffer);
             
