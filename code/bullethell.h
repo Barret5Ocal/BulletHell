@@ -28,9 +28,13 @@ struct render_element
     render_material Material;
 };
 
+struct camera 
+{
+    v3 Pos;
+    v3 Eye; 
+};
+
 struct game_state
 {
-    v3 CameraPos;
-    v3 ViewDir; 
-    float ViewDegree; 
+    camera Camera; 
 };

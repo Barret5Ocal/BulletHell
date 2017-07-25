@@ -289,6 +289,34 @@ void SetMatrix(matrix_set *MVP, v3 PosObj, v3 Scale,  v3 Axis, float Angle, v3 C
     
     gb_mat4_perspective(&MVP->Projection, FoV, ScreenDim.x / ScreenDim.y, 0.1f, 100.0f);
     
+    m4 CamRot; 
+    gb_mat4_identity(&CamRot);
+    
+#if 0 
+    v3 Target = {0.0f, 0.0f, 0.0f};
+    v3 For = Target - CamPos; 
+    gb_vec3_norm(&For, For);
+    v3 Left;
+    gb_vec3_cross(&Left, For, {0.0f, 1.0f, 0.0f});
+    gb_vec3_norm(&Left, Left);
+    v3 Up;
+    gb_vec3_cross(&Up, Left, For);
+    CamRot.e[0] = Left.x; 
+    CamRot.e[4] = Left.y; 
+    CamRot.e[8] = Left.z;
+    CamRot.e[1] = Up.x; 
+    CamRot.e[5] = Up.y; 
+    CamRot.e[9] = Up.z; 
+    CamRot.e[2] = For.x; 
+    CamRot.e[6] = For.y; 
+    CamRot.e[10] = For.z; 
+#endif 
+    
+    m4 CamTran;
+    gb_mat4_translate(&CamTran, CamPos);
+    //gb_mat4_rotate();
+    MVP->View = CamTran * CamRot;
+#if 0
     v3 Look = CamPos + v3{0.0f, 0.0f, 1.0f};
     //v3 Look = ViewDir - CamPos;
     gb_mat4_identity(&MVP->View); 
@@ -299,6 +327,7 @@ void SetMatrix(matrix_set *MVP, v3 PosObj, v3 Scale,  v3 Axis, float Angle, v3 C
     gb_vec3_norm(&Up, Up);
     //gb_mat4_look_at(&MVP->View, CamPos, ViewDir, Up);
     gb_mat4_look_at(&MVP->View, CamPos, Look, Up);
+#endif 
     
     gb_mat4_identity(&MVP->Model);
     m4 ModelTrans;

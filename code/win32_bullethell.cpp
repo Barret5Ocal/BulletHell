@@ -164,6 +164,8 @@ struct input
     };
     
     gbVec2 MousePos; 
+    gbVec2 PrevMousePos;
+    gbVec2 MouseMove;
     
     int LeftMouseClick;
     int RightMouseClick;
@@ -203,7 +205,10 @@ void Win32GetInput(input *Input, win32_windowdim Dim, game_state *GameState)
     Input->CameraVertical = CameraUp + CameraDown;
     Input->CameraHorizontal = CameraLeft + CameraRight;
     
+    Input->PrevMousePos = Input->MousePos;
     Input->MousePos = Win32GetMousePos(Dim);
+    Input->MouseMove = Input->MousePos - Input->PrevMousePos;
+    //gb_vec2_norm(&Input->MouseMove, Input->MouseMove);
     
     XINPUT_STATE State;
     if(XInputGetState(0, &State) != ERROR_DEVICE_NOT_CONNECTED)
