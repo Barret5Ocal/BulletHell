@@ -104,7 +104,8 @@ win32_windowdim Win32GetWindowDim(HWND Window)
     win32_windowdim Dim = {};
     
     RECT Rect = {};
-    GetClientRect(Window, &Rect);
+    //GetClientRect(Window, &Rect);
+    GetWindowRect(Window, &Rect);
     Dim.x = Rect.left;
     Dim.y = Rect.top;
     Dim.Width = Rect.right - Rect.left;
@@ -164,7 +165,6 @@ struct input
     };
     
     gbVec2 MousePos; 
-    gbVec2 PrevMousePos;
     gbVec2 MouseMove;
     
     int LeftMouseClick;
@@ -180,6 +180,15 @@ int Win32IsDown(int Code)
     return Down;
 }
 
+gbVec2 Win32GetMousePosFromCenter(win32_windowdim Dim)
+{
+    POINT Point; 
+    GetCursorPos(&Point);
+    v2 Center = {(float)Dim.Width/2, (float)Dim.Height/2};
+    
+    return {(float)(Point.x - Dim.x) - Center.x, (float)(Point.y - Dim.y) - Center.y};
+}
+
 gbVec2 Win32GetMousePos(win32_windowdim Dim)
 {
     POINT Point; 
@@ -187,7 +196,7 @@ gbVec2 Win32GetMousePos(win32_windowdim Dim)
     return {(float)(Point.x - Dim.x), (float)(Point.y - Dim.y)};
 }
 
-void Win32GetInput(input *Input, win32_windowdim Dim, game_state *GameState)
+void Win32GetInput(input *Input, input *OldInput, win32_windowdim Dim, game_state *GameState)
 {
     int32 MoveUp = Win32IsDown(0x57);
     int32 MoveDown = -Win32IsDown(0x53);
@@ -205,10 +214,13 @@ void Win32GetInput(input *Input, win32_windowdim Dim, game_state *GameState)
     Input->CameraVertical = CameraUp + CameraDown;
     Input->CameraHorizontal = CameraLeft + CameraRight;
     
-    Input->PrevMousePos = Input->MousePos;
-    Input->MousePos = Win32GetMousePos(Dim);
-    Input->MouseMove = Input->MousePos - Input->PrevMousePos;
-    //gb_vec2_norm(&Input->MouseMove, Input->MouseMove);
+    Input->MousePos = Win32GetMousePosFromCenter(Dim);
+    
+    Input->MouseMove = Input->MousePos - OldInput->MousePos;
+    
+    char Buffer[100] = {};
+    stbsp_sprintf(Buffer, "%f %f\n", Input->MouseMove.x, Input->MouseMove.y);
+    OutputDebugStringA(Buffer);
     
     XINPUT_STATE State;
     if(XInputGetState(0, &State) != ERROR_DEVICE_NOT_CONNECTED)
@@ -272,6 +284,9 @@ WinMain(HINSTANCE Instance,
         
         Setup(&GameState);
         
+        input OldInput = {};
+        input NewInput = {};
+        
         time_info TimeInfo = {};
         float FrameRate = 60;
         float dt = 1 / FrameRate; 
@@ -286,11 +301,12 @@ WinMain(HINSTANCE Instance,
             
             win32_windowdim Dim = Win32GetWindowDim(Window);
             
-            input Input = {};
+            OldInput = NewInput;
+            NewInput = {};
             if(ActiveApp)
-                Win32GetInput(&Input, Dim, &GameState);
+                Win32GetInput(&NewInput, &OldInput, Dim, &GameState);
             
-            Update(&GameState, &Input, dt, &RenderBuffer);
+            Update(&GameState, &NewInput, dt, &RenderBuffer);
             
             v2 ScreenDim = {(float)Dim.Width, (float)Dim.Height};
             RunRenderBuffer(ScreenDim, dt, &RenderBuffer);

@@ -1,33 +1,31 @@
 void Setup(game_state *GameState)
 {
     GameState->Camera.Pos = {0.0f, 0.0f, -10.0f};
+    //GameState->Camera.Eye = {0.559f, 0.0f, 0.829f};
     GameState->Camera.Eye = {0.0f, 0.0f, 1.0f};
+    
 }
 
 void MoveCamera(game_state *GameState, input *Input, float dt)
 {
     real32 Speed = 10.0f; 
     camera *Camera = &GameState->Camera; 
-    if(Input->MoveVertical > 0) Camera->Pos += (Camera->Eye * dt * Speed);
-    if(Input->MoveVertical < 0) Camera->Pos -= (Camera->Eye * dt * Speed);
+    if(Input->MoveVertical > 0) Camera->Pos += (Camera->Eye * v3{1.0f, 0.0f, 1.0f} * dt * Speed);
+    if(Input->MoveVertical < 0) Camera->Pos -= (Camera->Eye * v3{1.0f, 0.0f, 1.0f} * dt * Speed);
     v3 Right; 
     gb_vec3_cross(&Right, Camera->Eye, {0.0f, 1.0f, 0.0f});
-    if(Input->MoveHorizontal > 0) Camera->Pos += (Right * dt * Speed);
-    if(Input->MoveHorizontal < 0) Camera->Pos -= (Right * dt * Speed);
+    if(Input->MoveHorizontal > 0) Camera->Pos -= (Right  * v3{1.0f, 0.0f, 1.0f} * dt * Speed);
+    if(Input->MoveHorizontal < 0) Camera->Pos += (Right  * v3{1.0f, 0.0f, 1.0f} * dt * Speed);
     
-#if 0
-    gbMat4 Rot;
-    gb_mat4_rotate(&Rot, {0.0f, 1.0f, 0.0f}, (3.14f/(4.0f*45.0f))* Input->MouseMove.x);
-    gbMat3 Rot3;
-    Rot3.x = Rot.x.xyz; 
-    Rot3.y = Rot.y.xyz; 
-    Rot3.z = Rot.z.xyz; 
-    
-    gb_mat3_mul_vec3(&Camera->Eye, &Rot3, Camera->Eye);
-    char Buffer[100] = {}; 
-    stbsp_sprintf(Buffer, "Eye: %f, %f, %f\n", Camera->Eye.x, Camera->Eye.y, Camera->Eye.z);
-    
-    OutputDebugStringA(Buffer);
+#if 1
+    real32 CamSpeed = 10.0f;
+    static real32 AngleH = 0.0f;
+    static real32 AngleV = 0.0f;
+    AngleH += Input->MouseMove.x * dt * CamSpeed;
+    AngleV += Input->MouseMove.y * dt * CamSpeed;
+    Camera->Eye.z = gb_cos(gb_to_radians(AngleH));
+    Camera->Eye.x = gb_sin(gb_to_radians(AngleH));
+    Camera->Eye.y = gb_sin(gb_to_radians(AngleV));
 #endif 
 }
 
@@ -35,7 +33,7 @@ void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderB
 {
     v3 CubePositions[] = 
     {
-        v3{ 0.0f,  0.0f,  0.0f},
+        v3{0.0f,  0.0f,  0.0f},
         //v3{2.0f,  5.0f, -15.0f},
         //v3{-1.5f, -2.2f, -2.5f},
         //v3{-3.8f, -2.0f, -12.3f},

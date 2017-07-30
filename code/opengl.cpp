@@ -292,15 +292,18 @@ void SetMatrix(matrix_set *MVP, v3 PosObj, v3 Scale,  v3 Axis, float Angle, v3 C
     m4 CamRot; 
     gb_mat4_identity(&CamRot);
     
-#if 0 
-    v3 Target = {0.0f, 0.0f, 0.0f};
-    v3 For = Target - CamPos; 
+    
+    v3 Target = ViewDir;
+    //v3 Target = {0.0f, 0.0f, 0.0f};
+    //v3 For = Target - CamPos; 
+    v3 For = Target; 
     gb_vec3_norm(&For, For);
     v3 Left;
     gb_vec3_cross(&Left, For, {0.0f, 1.0f, 0.0f});
     gb_vec3_norm(&Left, Left);
     v3 Up;
     gb_vec3_cross(&Up, Left, For);
+#if 0
     CamRot.e[0] = Left.x; 
     CamRot.e[4] = Left.y; 
     CamRot.e[8] = Left.z;
@@ -311,23 +314,45 @@ void SetMatrix(matrix_set *MVP, v3 PosObj, v3 Scale,  v3 Axis, float Angle, v3 C
     CamRot.e[6] = For.y; 
     CamRot.e[10] = For.z; 
 #endif 
+    //gb_mat4_look_at(&CamRot, CamPos, ViewDir + CamPos, Up);
+#if 1
+    gbVec3 f, s, u;
+    gb_vec3_sub(&f, ViewDir + CamPos, CamPos);
+    gb_vec3_norm(&f, f);
     
+    gb_vec3_cross(&s, f, Up);
+    
+    gb_vec3_norm(&s, s);
+    
+    gb_vec3_cross(&u, s, f);
+    gbFloat4 *m;
+    m = gb_float44_m(&CamRot);
+    m[0][0] = +s.x;
+    m[1][0] = +s.y;
+    m[2][0] = +s.z;
+    
+    m[0][1] = +u.x;
+    m[1][1] = +u.y;
+    m[2][1] = +u.z;
+    
+    m[0][2] = +f.x;
+    m[1][2] = +f.y;
+    m[2][2] = +f.z;
+    
+    m[3][0] = gb_vec3_dot(s, CamPos);
+    m[3][1] = gb_vec3_dot(u, CamPos);
+    m[3][2] = gb_vec3_dot(f, CamPos);
+    
+    //CamRot.w.x = gb_vec3_dot(s, CamPos);
+    //CamRot.w.y = gb_vec3_dot(u, CamPos);
+    //CamRot.w.z = gb_vec3_dot(f, CamPos);
+#endif
     m4 CamTran;
-    gb_mat4_translate(&CamTran, CamPos);
+    gb_mat4_identity(&CamTran);
+    
+    //gb_mat4_translate(&CamTran, CamPos);
     //gb_mat4_rotate();
     MVP->View = CamTran * CamRot;
-#if 0
-    v3 Look = CamPos + v3{0.0f, 0.0f, 1.0f};
-    //v3 Look = ViewDir - CamPos;
-    gb_mat4_identity(&MVP->View); 
-    v3 Right; 
-    gb_vec3_cross(&Right, Look, {0.0f, -1.0f, 0.0f});
-    v3 Up; 
-    gb_vec3_cross(&Up, Look, Right);
-    gb_vec3_norm(&Up, Up);
-    //gb_mat4_look_at(&MVP->View, CamPos, ViewDir, Up);
-    gb_mat4_look_at(&MVP->View, CamPos, Look, Up);
-#endif 
     
     gb_mat4_identity(&MVP->Model);
     m4 ModelTrans;
