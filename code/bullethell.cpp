@@ -1,8 +1,10 @@
+
 void Setup(game_state *GameState)
 {
     GameState->Camera.Pos = {0.0f, 0.0f, -10.0f};
     //GameState->Camera.Eye = {0.559f, 0.0f, 0.829f};
     GameState->Camera.Eye = {0.0f, 0.0f, 1.0f};
+    
     
 }
 
@@ -33,6 +35,7 @@ void MoveCamera(game_state *GameState, input *Input, float dt)
 
 void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderBuffer)
 {
+    
     
     v3 CubePositions[] = 
     {

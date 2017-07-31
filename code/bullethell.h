@@ -1,3 +1,4 @@
+
 struct render_setup
 {
     uint32 Count; 
