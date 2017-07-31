@@ -45,6 +45,7 @@ typedef double real64;
 
 int Running = 1; 
 int ActiveApp = 1;
+v2 RawMouse;
 LRESULT CALLBACK WindowProc(HWND   Window,
                             UINT   Message,
                             WPARAM WParam,
@@ -79,10 +80,44 @@ LRESULT CALLBACK WindowProc(HWND   Window,
                     Rect.bottom = Rect.top + NewHeight; 
                     AdjustWindowRect(&Rect, WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_VISIBLE, 0);
                     SetWindowPos(Window, HWND_TOP, Rect.left, Rect.top, Rect.right - Rect.left, Rect.bottom - Rect.top, SWP_DRAWFRAME | SWP_NOMOVE | SWP_SHOWWINDOW);
-                    int i = 0;
+                    
                 }
             }
         }break;
+        case WM_INPUT: 
+        {
+            UINT dwSize;
+            
+            GetRawInputData((HRAWINPUT)LParam, RID_INPUT, NULL, &dwSize, 
+                            sizeof(RAWINPUTHEADER));
+            LPBYTE lpb = new BYTE[dwSize];
+            if (lpb == NULL) 
+            {
+                return 0;
+            } 
+            
+            if (GetRawInputData((HRAWINPUT)LParam, RID_INPUT, lpb, &dwSize, 
+                                sizeof(RAWINPUTHEADER)) != dwSize )
+                OutputDebugString (TEXT("GetRawInputData does not return correct size !\n")); 
+            
+            RAWINPUT* raw = (RAWINPUT*)lpb;
+            
+            if (raw->header.dwType == RIM_TYPEMOUSE) 
+            {
+                //int i = 0;
+                if(raw->data.mouse.usFlags == 0)
+                {
+                    int32 DeadZone = 1; 
+                    RawMouse.x = raw->data.mouse.lLastX > DeadZone || raw->data.mouse.lLastX < -DeadZone ? (real32)raw->data.mouse.lLastX : 0;
+                    RawMouse.y = raw->data.mouse.lLastY > DeadZone || raw->data.mouse.lLastY < -DeadZone ? (real32)raw->data.mouse.lLastY : 0;
+                    char Buffer[100]= {};
+                    stbsp_sprintf(Buffer, "%f %f \n", RawMouse.x, RawMouse.y);
+                    OutputDebugString(Buffer);
+                } 
+            }
+            delete[] lpb; 
+            
+        }break; 
         default:
         {
             Result = DefWindowProc(Window, Message, WParam, LParam);
@@ -113,137 +148,7 @@ win32_windowdim Win32GetWindowDim(HWND Window)
     return Dim; 
 }
 
-#include <xinput.h>
-
-typedef DWORD WINAPI B50XInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState);
-B50XInputGetState *XInputGetState_;
-#define XInputGetState XInputGetState_
-
-void LoadXInput()
-{
-    HMODULE XInput = LoadLibraryA("xinput1_3.dll");
-    if(XInput)
-    {
-        XInputGetState = (B50XInputGetState *)GetProcAddress(XInput, "XInputGetState");
-    }
-    else
-    {
-        XInput = LoadLibraryA("Xinput1_4.dll");
-        if(XInput)
-        {
-            XInputGetState = (B50XInputGetState *)GetProcAddress(XInput, "XInputGetState");
-        }
-        else 
-        {
-            XInput = LoadLibraryA("Xinput9_1_0.dll");
-            if(XInput)
-            {
-                XInputGetState = (B50XInputGetState *)GetProcAddress(XInput, "XInputGetState");
-            }
-            else
-            {
-                InvalidCodePath;
-            }
-        }
-    }
-}
-
-struct input
-{
-    union 
-    {
-        struct 
-        {
-            int32 MoveVertical;
-            int32 MoveHorizontal;
-            
-            int32 CameraVertical;
-            int32 CameraHorizontal;
-            
-        };
-        int E[4];
-    };
-    
-    gbVec2 MousePos; 
-    gbVec2 MouseMove;
-    
-    int LeftMouseClick;
-    int RightMouseClick;
-};
-
-int Win32IsDown(int Code)
-{
-    short Button = GetKeyState(Code);
-    int Toggle = (Button & 0xFF);
-    int Down = (Button >> 15) & 0x1; 
-    
-    return Down;
-}
-
-gbVec2 Win32GetMousePosFromCenter(win32_windowdim Dim)
-{
-    POINT Point; 
-    GetCursorPos(&Point);
-    v2 Center = {(float)Dim.Width/2, (float)Dim.Height/2};
-    
-    return {(float)(Point.x - Dim.x) - Center.x, (float)(Point.y - Dim.y) - Center.y};
-}
-
-gbVec2 Win32GetMousePos(win32_windowdim Dim)
-{
-    POINT Point; 
-    GetCursorPos(&Point);
-    return {(float)(Point.x - Dim.x), (float)(Point.y - Dim.y)};
-}
-
-void Win32GetInput(input *Input, input *OldInput, win32_windowdim Dim, game_state *GameState)
-{
-    int32 MoveUp = Win32IsDown(0x57);
-    int32 MoveDown = -Win32IsDown(0x53);
-    int32 MoveLeft = -Win32IsDown(0x41);
-    int32 MoveRight = Win32IsDown(0x44);
-    
-    Input->MoveVertical = MoveUp + MoveDown;
-    Input->MoveHorizontal = MoveLeft + MoveRight;
-    
-    int32 CameraUp = -Win32IsDown(VK_UP);
-    int32 CameraDown = Win32IsDown(VK_DOWN);
-    int32 CameraLeft = -Win32IsDown(VK_LEFT);
-    int32 CameraRight = Win32IsDown(VK_RIGHT);
-    
-    Input->CameraVertical = CameraUp + CameraDown;
-    Input->CameraHorizontal = CameraLeft + CameraRight;
-    
-    Input->MousePos = Win32GetMousePosFromCenter(Dim);
-    
-    Input->MouseMove = Input->MousePos - OldInput->MousePos;
-    
-    char Buffer[100] = {};
-    stbsp_sprintf(Buffer, "%f %f\n", Input->MouseMove.x, Input->MouseMove.y);
-    OutputDebugStringA(Buffer);
-    
-    XINPUT_STATE State;
-    if(XInputGetState(0, &State) != ERROR_DEVICE_NOT_CONNECTED)
-    {
-        XINPUT_GAMEPAD Pad = State.Gamepad;
-        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_UP) MoveUp = -1;
-        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) MoveDown = 1;
-        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT)MoveLeft = -1;
-        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT)MoveRight = 1;
-        
-        Input->MoveVertical = MoveUp + MoveDown;
-        Input->MoveHorizontal = MoveLeft + MoveRight;
-        
-        if(Pad.sThumbLX > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) MoveRight = 1; 
-        if(Pad.sThumbLX < -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) MoveLeft = -1; 
-        if(Pad.sThumbLY > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) MoveUp = -1; 
-        if(Pad.sThumbLY < -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) MoveDown = 1;
-        
-        Input->MoveVertical = MoveUp + MoveDown;
-        Input->MoveHorizontal = MoveLeft + MoveRight;
-    }
-}
-
+#include "win32_input.h"
 #include "bullethell.cpp"
 
 int CALLBACK 
@@ -257,6 +162,7 @@ WinMain(HINSTANCE Instance,
     WindowClass.style = CS_OWNDC|CS_HREDRAW|CS_VREDRAW;
     WindowClass.lpfnWndProc = WindowProc;
     WindowClass.hInstance = Instance;
+    WindowClass.hCursor= 0;
     WindowClass.lpszClassName = "Bullet Hell Class";
     
     if(RegisterClassEx(&WindowClass))

@@ -17,32 +17,35 @@ void MoveCamera(game_state *GameState, input *Input, float dt)
     if(Input->MoveHorizontal > 0) Camera->Pos -= (Right  * v3{1.0f, 0.0f, 1.0f} * dt * Speed);
     if(Input->MoveHorizontal < 0) Camera->Pos += (Right  * v3{1.0f, 0.0f, 1.0f} * dt * Speed);
     
-#if 1
+    // TODO(Barret5Ocal): Aim Acceleration??? 
     real32 CamSpeed = 10.0f;
     static real32 AngleH = 0.0f;
     static real32 AngleV = 0.0f;
     AngleH += Input->MouseMove.x * dt * CamSpeed;
     AngleV += Input->MouseMove.y * dt * CamSpeed;
+    AngleH += Input->CameraHorizontal * dt * CamSpeed * 20.0f;
+    AngleV -= Input->CameraVertical * dt * CamSpeed * 20.0f;
+    
     Camera->Eye.z = gb_cos(gb_to_radians(AngleH));
     Camera->Eye.x = gb_sin(gb_to_radians(AngleH));
     Camera->Eye.y = gb_sin(gb_to_radians(AngleV));
-#endif 
 }
 
 void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderBuffer)
 {
+    
     v3 CubePositions[] = 
     {
         v3{0.0f,  0.0f,  0.0f},
-        //v3{2.0f,  5.0f, -15.0f},
-        //v3{-1.5f, -2.2f, -2.5f},
-        //v3{-3.8f, -2.0f, -12.3f},
-        //v3{2.4f, -0.4f, -3.5f},
-        //v3{-1.7f,  3.0f, -7.5f},
-        //v3{1.3f, -2.0f, -2.5f},
-        //v3{1.5f,  2.0f, -2.5f},
-        //v3{1.5f,  0.2f, -1.5f},
-        //v3{-1.3f,  1.0f, -1.5f}
+        v3{2.0f,  5.0f, -15.0f},
+        v3{-1.5f, -2.2f, -2.5f},
+        v3{-3.8f, -2.0f, -12.3f},
+        v3{2.4f, -0.4f, -3.5f},
+        v3{-1.7f,  3.0f, -7.5f},
+        v3{1.3f, -2.0f, -2.5f},
+        v3{1.5f,  2.0f, -2.5f},
+        v3{1.5f,  0.2f, -1.5f},
+        v3{-1.3f,  1.0f, -1.5f}
     };
     
     MoveCamera(GameState, Input, dt);
@@ -50,6 +53,7 @@ void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderB
     render_setup *Setup = (render_setup *)PushStruct(RenderBuffer, render_setup);
     Setup->CameraPos = GameState->Camera.Pos;
     Setup->ViewDir = GameState->Camera.Eye;
+    
     
     for(int32 Index = 0;
         Index < ArrayCount(CubePositions);
@@ -75,7 +79,7 @@ void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderB
     render_element *Element = (render_element *)PushStruct(RenderBuffer, render_element);
     Element->Type = BOX;
     Element->Scale = {10.0f, 1.0f, 10.0f};
-    Element->Position = {0.0f, -5.0f, 0.0f};
+    Element->Position = {0.0f, -3.0f, 0.0f};
     Element->Angle = 0;
     Element->Axis = {1.0f, 1.0f, 1.0f};
     Element->Material = 
