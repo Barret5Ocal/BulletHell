@@ -39,8 +39,8 @@ struct input
     {
         struct 
         {
-            int32 MoveVertical;
-            int32 MoveHorizontal;
+            real32 MoveVertical;
+            real32 MoveHorizontal;
             
             real32 CameraVertical;
             real32 CameraHorizontal;
@@ -67,10 +67,11 @@ int Win32IsDown(int Code)
 
 void Win32GetInput(input *Input, input *OldInput, win32_windowdim Dim, game_state *GameState)
 {
-    int32 MoveUp = Win32IsDown(0x57);
-    int32 MoveDown = -Win32IsDown(0x53);
-    int32 MoveLeft = -Win32IsDown(0x41);
-    int32 MoveRight = Win32IsDown(0x44);
+    // NOTE(Barret5Ocal): Pay attention to what you type these 
+    real32  MoveUp = Win32IsDown(0x57);
+    real32  MoveDown = -Win32IsDown(0x53);
+    real32  MoveLeft = -Win32IsDown(0x41);
+    real32  MoveRight = Win32IsDown(0x44);
     
     Input->MoveVertical = MoveUp + MoveDown;
     Input->MoveHorizontal = MoveLeft + MoveRight;
@@ -102,18 +103,22 @@ void Win32GetInput(input *Input, input *OldInput, win32_windowdim Dim, game_stat
     if(XInputGetState(0, &State) != ERROR_DEVICE_NOT_CONNECTED)
     {
         XINPUT_GAMEPAD Pad = State.Gamepad;
-        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_UP) MoveUp = 1;
-        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) MoveDown = -1;
-        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT)MoveLeft = -1;
-        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT)MoveRight = 1;
+        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_UP) MoveUp = 1.0f;
+        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) MoveDown = -1.0f;
+        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT)MoveLeft = -1.0f;
+        if(Pad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT)MoveRight = 1.0f;
         
         Input->MoveVertical = MoveUp + MoveDown;
         Input->MoveHorizontal = MoveLeft + MoveRight;
         
-        if(Pad.sThumbLX > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) MoveRight = 1; 
-        if(Pad.sThumbLX < -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) MoveLeft = -1; 
-        if(Pad.sThumbLY > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) MoveUp = 1; 
-        if(Pad.sThumbLY < -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) MoveDown = -1;
+        if(Pad.sThumbLX > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
+            MoveRight = (real32)Pad.sThumbLX/32767.0f;  
+        if(Pad.sThumbLX < -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
+            MoveLeft = (real32)Pad.sThumbLX/32768.0f; 
+        if(Pad.sThumbLY > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) 
+            MoveUp = (real32)Pad.sThumbLY/32767.0f; 
+        if(Pad.sThumbLY < -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) 
+            MoveDown = (real32)Pad.sThumbLY/32768.0f;
         
         Input->MoveVertical = MoveUp + MoveDown;
         Input->MoveHorizontal = MoveLeft + MoveRight;

@@ -287,7 +287,7 @@ struct matrix_set
 void SetMatrix(matrix_set *MVP, v3 PosObj, v3 Scale,  v3 Axis, float Angle, v3 CamPos, v3 ViewDir, float FoV, v2 ScreenDim, float dt)
 {
     
-    gb_mat4_perspective(&MVP->Projection, FoV, ScreenDim.x / ScreenDim.y, 0.1f, 100.0f);
+    gb_mat4_perspective(&MVP->Projection, FoV, ScreenDim.x / ScreenDim.y, 0.1f, 150.0f);
     
     m4 CamRot; 
     gb_mat4_identity(&CamRot);
@@ -303,19 +303,7 @@ void SetMatrix(matrix_set *MVP, v3 PosObj, v3 Scale,  v3 Axis, float Angle, v3 C
     gb_vec3_norm(&Left, Left);
     v3 Up;
     gb_vec3_cross(&Up, Left, For);
-#if 0
-    CamRot.e[0] = Left.x; 
-    CamRot.e[4] = Left.y; 
-    CamRot.e[8] = Left.z;
-    CamRot.e[1] = Up.x; 
-    CamRot.e[5] = Up.y; 
-    CamRot.e[9] = Up.z; 
-    CamRot.e[2] = For.x; 
-    CamRot.e[6] = For.y; 
-    CamRot.e[10] = For.z; 
-#endif 
-    //gb_mat4_look_at(&CamRot, CamPos, ViewDir + CamPos, Up);
-#if 1
+    
     gbVec3 f, s, u;
     gb_vec3_sub(&f, ViewDir + CamPos, CamPos);
     gb_vec3_norm(&f, f);
@@ -343,15 +331,9 @@ void SetMatrix(matrix_set *MVP, v3 PosObj, v3 Scale,  v3 Axis, float Angle, v3 C
     m[3][1] = gb_vec3_dot(u, CamPos);
     m[3][2] = gb_vec3_dot(f, CamPos);
     
-    //CamRot.w.x = gb_vec3_dot(s, CamPos);
-    //CamRot.w.y = gb_vec3_dot(u, CamPos);
-    //CamRot.w.z = gb_vec3_dot(f, CamPos);
-#endif
     m4 CamTran;
     gb_mat4_identity(&CamTran);
     
-    //gb_mat4_translate(&CamTran, CamPos);
-    //gb_mat4_rotate();
     MVP->View = CamTran * CamRot;
     
     gb_mat4_identity(&MVP->Model);
