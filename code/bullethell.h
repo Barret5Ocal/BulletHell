@@ -31,13 +31,33 @@ struct render_element
 
 typedef gbAabb3 aabb;
 
-struct level_block
+struct vertex
 {
-    uint32 Type; 
+    v3 Pos;
+    v3 Norm; 
+};
+
+struct model
+{
+    uint32 Count;
+    vertex *Vertices;
+};
+
+struct entity 
+{
     v3 Pos;
     real32 Angle;
     v3 Axis;
     v3 Scale;
+    v3 Velocity;
+    aabb Aabb;
+    model *Model;
+};
+
+struct level_block
+{
+    uint32 Type; 
+    entity *Entity;
 };
 
 struct scene_layout
@@ -48,35 +68,27 @@ struct scene_layout
 
 struct camera 
 {
-    v3 Pos;
+    //v3 Pos;
     v3 Eye; 
 };
 
 struct player 
 {
-    
+    camera Camera;
+    entity *Entity;
 };
 
 struct bullet
 {
-    
-};
-
-struct scene
-{
-    // NOTE(Barret5Ocal): holds references to all objects in the game 
-    scene_layout *Layout;
-    player *Players;
-    int32 PlayerCount;
-    bullet *Bullets;
-    int32 BulletCount;
+    entity *Entity;
 };
 
 struct game_state
 {
-    camera Camera; 
-    memory_arena SceneArena;
-    scene Scene; 
-    scene_layout *Scene1; 
+    player Player;
     
+    memory_arena SceneArena;
+    scene_layout *Scene1; 
+    memory_arena Entities;
+    memory_arena Models;
 };

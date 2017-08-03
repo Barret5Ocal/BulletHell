@@ -1,70 +1,140 @@
+void GenerateAABB(entity *Entity)
+{
+    aabb *AABB = &Entity->Aabb;
+    
+    // TODO(Barret5Ocal): generate aabb
+    uint32 Count = Entity->Model->Count;
+    m4 Rotate;
+    gb_mat4_rotate(&Rotate, Entity->Axis, gb_to_radians(Entity->Angle));
+    m4 Scale;
+    gb_mat4_scale(&Scale, Entity->Scale);
+    m4 Trans;
+    gb_mat4_translate(&Trans, Entity->Pos);
+    
+    real32 MinX = 0;
+    real32 MinY = 0;
+    real32 MinZ = 0;
+    real32 MaxX = 0;
+    real32 MaxY = 0;
+    real32 MaxZ = 0;
+    
+    for(uint32 Index = 0;
+        Index < Count;
+        ++Index)
+    {
+        vertex *Vertex = &Entity->Model->Vertices[Index];
+        v3 Position = Vertex->Pos;
+        v4 Pos4 = v4{Position.x, Position.y, Position.z, 1.0f};
+        Pos4 =  Trans * Scale * Rotate * Pos4;
+        Position = Pos4.xyz;
+        if(Index == 0)
+        {
+            MinX = Position.x;
+            MinY = Position.y;
+            MinZ = Position.z;
+            MaxX = Position.x;
+            MaxY = Position.y;
+            MaxZ = Position.z;
+        }
+        else 
+        {
+            if(Position.x < MinX) MinX = Position.x;
+            if(Position.y < MinY) MinY = Position.y;
+            if(Position.z < MinZ) MinZ = Position.z;
+            if(Position.x > MaxX) MaxX = Position.x;
+            if(Position.y > MaxY) MaxY = Position.y;
+            if(Position.z > MaxZ) MaxZ = Position.z;
+        }
+    }
+    
+    // TODO(Barret5Ocal): Make AABB now
+}
+
 scene_layout *LoadSceneLayout(game_state *GameState)
 {
     AllocateArena(&GameState->SceneArena, Megabyte(2));
     GameState->Scene1 =(scene_layout *)PushStruct(&GameState->SceneArena, scene_layout);
     scene_layout *Scene = GameState->Scene1;
     
-    
     Scene->Count = 5;
     Scene->Blocks = (level_block *)(Scene + 1);
     level_block *Block = (level_block *)PushStruct(&GameState->SceneArena, level_block);
+    entity *Entity = (entity *)PushStruct(&GameState->Entities, entity);
+    Block->Entity = Entity; 
     Block->Type = BOX; 
-    Block->Pos = {0.0f, -3.0f, 0.0f};
-    Block->Angle = 0;
-    Block->Axis = {1.0f, 1.0f, 1.0f};
-    Block->Scale = {100.0f, 1.0f, 100.0f};
+    Entity->Pos = {0.0f, -3.0f, 0.0f};
+    Entity->Angle = 0;
+    Entity->Axis = {1.0f, 1.0f, 1.0f};
+    Entity->Scale = {100.0f, 1.0f, 100.0f};
+    Entity->Model = (model *)GameState->Models.Memory;
     
     Block = (level_block *)PushStruct(&GameState->SceneArena, level_block);
+    Entity = (entity *)PushStruct(&GameState->Entities, entity);
+    Block->Entity = Entity; 
     Block->Type = BOX; 
-    Block->Pos = {47.5f, 2.0f, 47.5f};
-    Block->Angle = 0;
-    Block->Axis = {1.0f, 1.0f, 1.0f};
-    Block->Scale = {5.0f, 10.0f, 5.0f};
+    Entity->Pos = {47.5f, 2.0f, 47.5f};
+    Entity->Angle = 0;
+    Entity->Axis = {1.0f, 1.0f, 1.0f};
+    Entity->Scale = {5.0f, 10.0f, 5.0f};
+    Entity->Model = (model *)GameState->Models.Memory;
     
     Block = (level_block *)PushStruct(&GameState->SceneArena, level_block);
+    Entity = (entity *)PushStruct(&GameState->Entities, entity);
+    Block->Entity = Entity; 
     Block->Type = BOX; 
-    Block->Pos = {-47.5f, 2.0f, 47.5f};
-    Block->Angle = 0;
-    Block->Axis = {1.0f, 1.0f, 1.0f};
-    Block->Scale = {5.0f, 10.0f, 5.0f};
+    Entity->Pos = {-47.5f, 2.0f, 47.5f};
+    Entity->Angle = 0;
+    Entity->Axis = {1.0f, 1.0f, 1.0f};
+    Entity->Scale = {5.0f, 10.0f, 5.0f};
+    Entity->Model = (model *)GameState->Models.Memory;
     
     Block = (level_block *)PushStruct(&GameState->SceneArena, level_block);
+    Entity = (entity *)PushStruct(&GameState->Entities, entity);
+    Block->Entity = Entity; 
     Block->Type = BOX; 
-    Block->Pos = {47.5f, 2.0f, -47.5f};
-    Block->Angle = 0;
-    Block->Axis = {1.0f, 1.0f, 1.0f};
-    Block->Scale = {5.0f, 10.0f, 5.0f};
+    Entity->Pos = {47.5f, 2.0f, -47.5f};
+    Entity->Angle = 0;
+    Entity->Axis = {1.0f, 1.0f, 1.0f};
+    Entity->Scale = {5.0f, 10.0f, 5.0f};
+    Entity->Model = (model *)GameState->Models.Memory;
     
     Block = (level_block *)PushStruct(&GameState->SceneArena, level_block);
+    Entity = (entity *)PushStruct(&GameState->Entities, entity);
+    Block->Entity = Entity; 
     Block->Type = BOX; 
-    Block->Pos = {-47.5f, 2.0f, -47.5f};
-    Block->Angle = 0;
-    Block->Axis = {1.0f, 1.0f, 1.0f};
-    Block->Scale = {5.0f, 10.0f, 5.0f};
+    Entity->Pos = {-47.5f, 2.0f, -47.5f};
+    Entity->Angle = 0;
+    Entity->Axis = {1.0f, 1.0f, 1.0f};
+    Entity->Scale = {5.0f, 10.0f, 5.0f};
+    Entity->Model = (model *)GameState->Models.Memory;
     
     return Scene; 
 }
 
 void Setup(game_state *GameState)
 {
-    GameState->Camera.Pos = {0.0f, 0.0f, -10.0f};
-    //GameState->Camera.Eye = {0.559f, 0.0f, 0.829f};
-    GameState->Camera.Eye = {0.0f, 0.0f, 1.0f};
+    AllocateArena(&GameState->Entities, Megabyte(2));
+    GameState->Player.Entity = (entity *)PushStruct(&GameState->Entities, entity);
+    GameState->Player.Entity->Pos = {0.0f, 0.0f, -10.0f};
+    GameState->Player.Camera.Eye = {0.0f, 0.0f, 1.0f};
+    // TODO(Barret5Ocal): pretend its a cube for now. make player model later
+    GameState->Player.Entity->Model = (model *)GameState->Models.Memory;
     
-    GameState->Scene.Layout = LoadSceneLayout(GameState);
+    LoadSceneLayout(GameState);
 }
 
-void TestCollision(scene *Scene)
+void TestCollision(entity *Entities)
 {
     
 }
 
-void MoveCamera(game_state *GameState, input *Input, float dt)
+void MovePlayer(game_state *GameState, input *Input, float dt)
 {
     v3 Velocity = {}; 
     
     real32 Speed = 10.0f; 
-    camera *Camera = &GameState->Camera; 
+    player *Player  = &GameState->Player;
+    camera *Camera = &Player->Camera; 
     
     v3 Right; 
     gb_vec3_cross(&Right, Camera->Eye, {0.0f, 1.0f, 0.0f});
@@ -100,21 +170,21 @@ void MoveCamera(game_state *GameState, input *Input, float dt)
     v3 Gravity = {0.0f, 1.0f, 0.0f};
     //Velocity += Gravity;
     
-    Camera->Pos += Velocity;
+    Player->Entity->Pos += Velocity;
 }
 
 
 void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderBuffer)
 {
     
-    MoveCamera(GameState, Input, dt);
+    MovePlayer(GameState, Input, dt);
     
-    TestCollision(&GameState->Scene);
+    //TestCollision(&GameState->Scene);
     
     render_setup *Setup = (render_setup *)PushStruct(RenderBuffer, render_setup);
     *Setup = {};
-    Setup->CameraPos = GameState->Camera.Pos;
-    Setup->ViewDir = GameState->Camera.Eye;
+    Setup->CameraPos = GameState->Player.Entity->Pos;
+    Setup->ViewDir = GameState->Player.Camera.Eye;
     
     
     for(int32 Index = 0;
@@ -125,10 +195,10 @@ void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderB
         
         render_element *Element = (render_element *)PushStruct(RenderBuffer, render_element);
         Element->Type = Block->Type;
-        Element->Scale = Block->Scale;
-        Element->Position = Block->Pos;
-        Element->Angle = Block->Angle;
-        Element->Axis = Block->Axis;
+        Element->Scale = Block->Entity->Scale;
+        Element->Position = Block->Entity->Pos;
+        Element->Angle = Block->Entity->Angle;
+        Element->Axis = Block->Entity->Axis;
         Element->Material = 
         {
             {1.0f, 0.5f, 0.31f},

@@ -113,9 +113,11 @@ void SetUniformM4(GLuint Program, char* Name, m4* M4)
     glUniformMatrix4fv(glGetUniformLocation(Program, Name), 1, GL_FALSE, &M4->e[0]);
 }
 
-void LoadAssets()
+void LoadAssets(memory_arena *Models)
 {
-    float vertices[] = {
+    AllocateArena(Models, Megabyte(2));
+    model *Cube = (model *)PushStruct(Models, model);
+    vertex vertices[] = {
         -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
         0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
@@ -158,6 +160,11 @@ void LoadAssets()
         -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
         -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
     };
+    
+    uint32 VCount = ArrayCount(vertices);
+    Cube->Vertices = (vertex *)PushArray(Models, VCount, vertex);
+    memcpy(Cube->Vertices, vertices, sizeof(vertices));
+    Cube->Count = VCount;
     
     glGenVertexArrays(1, &cubeVAO);
     glGenBuffers(1, &cubeVBO);

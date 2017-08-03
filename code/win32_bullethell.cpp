@@ -182,13 +182,13 @@ WinMain(HINSTANCE Instance,
         
         LoadXInput();
         Win32InitOpenGL(Window);
-        LoadAssets();
         
         game_state GameState = {};
         memory_arena RenderBuffer = {};
         AllocateArena(&RenderBuffer, Megabyte(4));
         
         Setup(&GameState);
+        LoadAssets(&GameState.Models);
         
         input OldInput = {};
         input NewInput = {};
