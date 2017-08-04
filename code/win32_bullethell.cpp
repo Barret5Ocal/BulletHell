@@ -187,8 +187,8 @@ WinMain(HINSTANCE Instance,
         memory_arena RenderBuffer = {};
         AllocateArena(&RenderBuffer, Megabyte(4));
         
-        Setup(&GameState);
         LoadAssets(&GameState.Models);
+        Setup(&GameState);
         
         input OldInput = {};
         input NewInput = {};

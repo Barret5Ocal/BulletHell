@@ -43,8 +43,16 @@ struct model
     vertex *Vertices;
 };
 
+enum entity_type
+{
+    LEVEL_BLOCK,
+    BULLET,
+    PLAYER
+};
+
 struct entity 
 {
+    uint32 Type;
     v3 Pos;
     real32 Angle;
     v3 Axis;
@@ -91,4 +99,5 @@ struct game_state
     scene_layout *Scene1; 
     memory_arena Entities;
     memory_arena Models;
+    memory_arena Collisions;
 };
