@@ -198,7 +198,7 @@ void TestCollision(entity *Entities, uint32 Count, memory_arena *Collisions)
         ++Index)
     {
         entity *Entity1 = Entities + Index;
-        Entity1->Pos += Entity1->Velocity;
+        //Entity1->Pos += Entity1->Velocity;
         
         for (uint32 Index2 = 0;
              Index2 < Count;
@@ -236,6 +236,57 @@ void ResolveCollision(entity *Entities, int32 EnititySize, collision *Collisions
         int i = 0;
     
     // TODO(Barret5Ocal): finish this. i making 2 collision struct for each collision so make sure that you only modify one entity per collision
+    for(uint32 Index = 0;
+        Index < CollisionSize;
+        ++Index)
+    {
+        collision *Collision = Collisions + Index;
+        
+        entity *Entity = Collision->Entity1;
+        entity *Other = Collision->Entity2;
+        switch(Entity->Type)
+        {
+            case LEVEL_BLOCK:
+            {
+                
+            }break;
+            case PLAYER:
+            {
+                switch(Other->Type)
+                {
+                    case LEVEL_BLOCK:
+                    {
+                        Entity->Velocity = {};
+                    }break;
+                    case BULLET:
+                    {
+                        // TODO(Barret5Ocal): Deal Damage to player
+                    }break;
+                    default:
+                    {
+                        InvalidCodePath;
+                    }break;
+                }
+            }break;
+            case BULLET:
+            {
+                
+            }break;
+            default:
+            {
+                InvalidCodePath;
+            }break;
+        }
+    }
+    
+    for(uint32 Index = 0;
+        Index < EnititySize;
+        ++Index)
+    {
+        entity *Entity = Entities + Index;
+        
+        Entity->Pos += Entity->Velocity;
+    }
 }
 
 void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderBuffer)
