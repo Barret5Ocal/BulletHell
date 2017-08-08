@@ -1,4 +1,16 @@
 
+struct vertex
+{
+    v3 Pos;
+    v3 Norm; 
+};
+
+struct model
+{
+    uint32 Count;
+    vertex *Vertices;
+};
+
 struct render_setup
 {
     uint32 Count; 
@@ -27,21 +39,10 @@ struct render_element
     float Angle;
     v3 Scale;
     render_material Material;
+    model  *Model;
 };
 
 typedef gbAabb3 aabb;
-
-struct vertex
-{
-    v3 Pos;
-    v3 Norm; 
-};
-
-struct model
-{
-    uint32 Count;
-    vertex *Vertices;
-};
 
 enum entity_type
 {

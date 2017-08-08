@@ -113,69 +113,91 @@ void SetUniformM4(GLuint Program, char* Name, m4* M4)
     glUniformMatrix4fv(glGetUniformLocation(Program, Name), 1, GL_FALSE, &M4->e[0]);
 }
 
-void LoadAssets(memory_arena *Models)
+
+GLuint LoadVAO(model *Model)
 {
-    AllocateArena(Models, Megabyte(2));
-    model *Cube = (model *)PushStruct(Models, model);
-    vertex vertices[] = {
-        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-        0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-        0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-        0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-        
-        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-        0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-        0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-        0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-        
-        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-        -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-        -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-        
-        0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-        0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-        0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-        0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-        0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-        0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-        
-        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-        0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-        0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-        0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-        
-        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-        0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-        0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-        0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
-    };
+    GLuint VAO;
+    GLuint VBO;
+    uint32 VCount = Model->Count;
+    vertex *Vertices = Model->Vertices;
     
-    uint32 VCount = ArrayCount(vertices);
-    Cube->Vertices = (vertex *)PushArray(Models, VCount, vertex);
-    memcpy(Cube->Vertices, vertices, sizeof(vertices));
-    Cube->Count = VCount;
-    
-    glGenVertexArrays(1, &cubeVAO);
-    glGenBuffers(1, &cubeVBO);
-    glBindVertexArray(cubeVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), &vertices, GL_STATIC_DRAW);
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, VCount * 6 * sizeof(float), Vertices, GL_STATIC_DRAW);
     
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
+    
+    return VAO;
+}
+
+void LoadAssets(memory_arena *Models)
+{
+    AllocateArena(Models, Megabyte(2));
+    model *Cube = (model *)PushStruct(Models, model);
+    Cube->Count = 36; 
+    Cube->Vertices = (vertex *)PushArray(Models, Cube->Count, vertex);
+    //vertex vertices[]
+    
+    vertex Vertices[] = {
+        {-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f},
+        {0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f},
+        {0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f},
+        {0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f},
+        {-0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f},
+        {-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f},
+        
+        {-0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f},
+        {0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f},
+        {0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f},
+        {0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f},
+        {-0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f},
+        {-0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f},
+        
+        {-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f},
+        {-0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f},
+        {-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f},
+        {-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f},
+        {-0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f},
+        {-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f},
+        
+        {0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f},
+        {0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f},
+        {0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f},
+        {0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f},
+        {0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f},
+        {0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f},
+        
+        {-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f},
+        {0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f},
+        {0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f},
+        {0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f},
+        {-0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f},
+        {-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f},
+        
+        {-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f},
+        {0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f},
+        {0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f},
+        {0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f},
+        {-0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f},
+        {-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f}
+    };
+    for(uint32 Index = 0;
+        Index < Cube->Count;
+        ++Index)
+    {
+        vertex *Vertex = Cube->Vertices + Index;
+        *Vertex = Vertices[Index];
+    }
+    //uint32 VCount = ArrayCount(vertices);
+    
+    //memcpy(Cube->Vertices, vertices, sizeof(vertices));
+    //Cube->Count = VCount;
+    //cubeVAO = LoadVAO(Cube);
     
     char *VertexShaderSource = 
         R"Ver(
@@ -381,18 +403,26 @@ void RunRenderBuffer(v2 ScreenDim, float dt, memory_arena *RenderBuffer)
     glUniform1f(Light.Linear, 0.09f); 
     glUniform1f(Light.Quadratic, 0.032f); 
     
-    glBindVertexArray(cubeVAO);
+    //glBindVertexArray(cubeVAO);
     
     render_setup *Setup = (render_setup *)RenderBuffer->Memory;
-    
     glUniform3f(ViewPosID, Setup->CameraPos.x, Setup->CameraPos.y, Setup->CameraPos.z); 
     
     render_element *FirstElement = (render_element *)(Setup + 1);
+    model *CurrentModel = 0; 
     for(uint32 Index = 0;
         Index < Setup->Count;
         ++Index)
     {
+        
         render_element *Element = FirstElement + Index;
+        if(Element->Model != CurrentModel)
+        {
+            GLuint VAO = LoadVAO(Element->Model);
+            glBindVertexArray(VAO);
+            CurrentModel = Element->Model;
+        }
+        
         matrix_set MVP;
         SetMatrix(&MVP, Element->Position, Element->Scale, Element->Axis, Element->Angle, Setup->CameraPos, Setup->ViewDir, 45.0f, ScreenDim, dt);
         

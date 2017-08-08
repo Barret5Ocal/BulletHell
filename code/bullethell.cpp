@@ -1,3 +1,31 @@
+void CreateSphereModel(game_state *GameState, real32 Radius, uint32 Rings, uint32 Sectors)
+{
+    model *Model = (model *)PushStruct(&GameState->Models, model);
+    Model->Count = Rings * Sectors;
+    Model->Vertices = (vertex *)PushArray(&GameState->Models, Rings * Sectors * 6, float);
+    real32 PI_OVER_2 = GB_MATH_PI/2;
+    float const R = 1./(float)(Rings-1);
+    float const S = 1./(float)(Sectors-1);
+    int32 Index = 0;
+    for(int32 r = 0; r < Rings; r++) for(int32 s = 0; s < Sectors; s++) 
+    {
+        float const y = gb_sin( -PI_OVER_2 + GB_MATH_PI * r * R );
+        float const x = gb_cos(2*GB_MATH_PI * s * S) * sin( GB_MATH_PI * r * R );
+        float const z = gb_sin(2*GB_MATH_PI * s * S) * sin( GB_MATH_PI * r * R );
+        
+        vertex * Vertex = Model->Vertices + Index;
+        Vertex->Pos.x = x * Radius;
+        Vertex->Pos.y = y * Radius;
+        Vertex->Pos.z = z * Radius;
+        
+        Vertex->Norm.x = x;
+        Vertex->Norm.y = y;
+        Vertex->Norm.z = z;
+        ++Index;
+    }
+    
+}
+
 void GenerateAABB(entity *Entity)
 {
     uint32 Count = Entity->Model->Count;
@@ -104,8 +132,10 @@ void Setup(game_state *GameState)
     GenerateAABB(GameState->Player.Entity);
     
     LoadSceneLayout(GameState);
+    CreateSphereModel(GameState, 1.0f, 10, 10);
     
     AllocateArena(&GameState->Collisions, Megabyte(2));
+    
 }
 
 void MovePlayer(game_state *GameState, input *Input, float dt)
@@ -169,13 +199,19 @@ int32 AabbIntersection(aabb AABB1, aabb AABB2)
     real32 MaxY2 = AABB2.centre.y + AABB2.half_size.y;
     real32 MaxZ2 = AABB2.centre.z + AABB2.half_size.z;
     
-    if(MinX1 >= MaxX2) return 1;
-    if(MinY1 >= MaxY2) return 1;
-    if(MinZ1 >= MaxZ2) return 1;
+    if(MinX1 >= MaxX2) 
+        return 1;
+    if(MinY1 >= MaxY2) 
+        return 1;
+    if(MinZ1 >= MaxZ2)
+        return 1;
     
-    if(MinX2 >= MaxX1) return 1;
-    if(MinY2 >= MaxY1) return 1;
-    if(MinZ2 >= MaxZ1) return 1;
+    if(MinX2 >= MaxX1) 
+        return 1;
+    if(MinY2 >= MaxY1)
+        return 1;
+    if(MinZ2 >= MaxZ1) 
+        return 1;
     
     return 0;
 }
@@ -244,6 +280,8 @@ void ResolveCollision(entity *Entities, int32 EnititySize, collision *Collisions
         
         entity *Entity = Collision->Entity1;
         entity *Other = Collision->Entity2;
+        aabb AABB1 = Collision->AABB1; 
+        aabb AABB2 = Collision->AABB2; 
         switch(Entity->Type)
         {
             case LEVEL_BLOCK:
@@ -256,6 +294,9 @@ void ResolveCollision(entity *Entities, int32 EnititySize, collision *Collisions
                 {
                     case LEVEL_BLOCK:
                     {
+                        v3 Reflect = {};
+                        
+                        //gb_vec3_reflect(&Reflect, Entity->Velocity, );
                         Entity->Velocity = {};
                     }break;
                     case BULLET:
@@ -287,6 +328,22 @@ void ResolveCollision(entity *Entities, int32 EnititySize, collision *Collisions
         
         Entity->Pos += Entity->Velocity;
     }
+}
+
+model *SeekModel(memory_arena *Models, int Index)
+{
+    uint8 *Seek = (uint8 *)Models->Memory;
+    for(uint32 i = 0; 
+        i < Index; 
+        ++i)
+    {
+        model *Model = (model *)Seek;
+        Seek += sizeof(model);
+        int VCount = Model->Count; 
+        Seek += VCount * sizeof(vertex);
+    }
+    
+    return (model *)Seek; 
 }
 
 void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderBuffer)
@@ -323,8 +380,25 @@ void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderB
             {0.5f, 0.5f, 0.5f},
             32.0f
         };
+        Element->Model = (model *)GameState->Models.Memory;
         ++Setup->Count;
     }
     
+    render_element *Element = (render_element *)PushStruct(RenderBuffer, render_element);
+    Element->Type = 0;
+    Element->Scale = {1.0f, 1.0f, 1.0f};
+    Element->Position = {0.0f, 0.0f, 20.0f};
+    Element->Angle = 0.0f;
+    Element->Axis = {1.0f, 1.0f, 1.0f};
+    Element->Material = 
+    {
+        {1.0f, 0.5f, 0.31f},
+        {1.0f, 0.5f, 0.31f},
+        {0.5f, 0.5f, 0.5f},
+        32.0f
+    };
+    Element->Model = SeekModel(&GameState->Models, 1);
+    ++Setup->Count;
+    int i =0;
 }
 
