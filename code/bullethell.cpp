@@ -4,16 +4,18 @@ void CreateSphereModel(game_state *GameState, real32 Radius, uint32 Rings, uint3
     Model->Count = Rings * Sectors;
     Model->Vertices = (vertex *)PushArray(&GameState->Models, Rings * Sectors * 6, float);
     real32 PI_OVER_2 = GB_MATH_PI/2;
+    
     float const R = 1./(float)(Rings-1);
     float const S = 1./(float)(Sectors-1);
-    int32 Index = 0;
-    for(int32 r = 0; r < Rings; r++) for(int32 s = 0; s < Sectors; s++) 
+    int r, s;
+    
+    vertex *Vertex = Model->Vertices;
+    for(r = 0; r < Rings; r++) for(s = 0; s < Sectors; s++) 
     {
         float const y = gb_sin( -PI_OVER_2 + GB_MATH_PI * r * R );
-        float const x = gb_cos(2*GB_MATH_PI * s * S) * sin( GB_MATH_PI * r * R );
-        float const z = gb_sin(2*GB_MATH_PI * s * S) * sin( GB_MATH_PI * r * R );
+        float const x = gb_cos(2*GB_MATH_PI * s * S) * gb_sin( GB_MATH_PI * r * R );
+        float const z = gb_sin(2*GB_MATH_PI * s * S) * gb_sin( GB_MATH_PI * r * R );
         
-        vertex * Vertex = Model->Vertices + Index;
         Vertex->Pos.x = x * Radius;
         Vertex->Pos.y = y * Radius;
         Vertex->Pos.z = z * Radius;
@@ -21,9 +23,18 @@ void CreateSphereModel(game_state *GameState, real32 Radius, uint32 Rings, uint3
         Vertex->Norm.x = x;
         Vertex->Norm.y = y;
         Vertex->Norm.z = z;
-        ++Index;
+        ++Vertex;
     }
     
+    Model->ICount = Rings * Sectors * 4;
+    uint32 *i = (uint32 *)PushArray(&GameState->Models, Model->ICount, uint32);
+    Model->Indices = i; 
+    for(r = 0; r < Rings; r++) for(s = 0; s < Sectors; s++) {
+        *i++ = r * Sectors + s;
+        *i++ = r * Sectors + (s+1);
+        *i++ = (r+1) * Sectors + (s+1);
+        *i++ = (r+1) * Sectors + s;
+    }
 }
 
 void GenerateAABB(entity *Entity)
@@ -119,6 +130,69 @@ scene_layout *LoadSceneLayout(game_state *GameState)
 
 void Setup(game_state *GameState)
 {
+    
+    memory_arena *Models = &GameState->Models;
+    
+    AllocateArena(Models, Megabyte(2));
+    model *Cube = (model *)PushStruct(Models, model);
+    Cube->Count = 36; 
+    Cube->Vertices = (vertex *)PushArray(Models, Cube->Count, vertex);
+    //vertex vertices[]
+    
+    vertex Vertices[] = {
+        {-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f},
+        {0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f},
+        {0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f},
+        {0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f},
+        {-0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f},
+        {-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f},
+        
+        {-0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f},
+        {0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f},
+        {0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f},
+        {0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f},
+        {-0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f},
+        {-0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f},
+        
+        {-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f},
+        {-0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f},
+        {-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f},
+        {-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f},
+        {-0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f},
+        {-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f},
+        
+        {0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f},
+        {0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f},
+        {0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f},
+        {0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f},
+        {0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f},
+        {0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f},
+        
+        {-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f},
+        {0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f},
+        {0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f},
+        {0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f},
+        {-0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f},
+        {-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f},
+        
+        {-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f},
+        {0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f},
+        {0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f},
+        {0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f},
+        {-0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f},
+        {-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f}
+    };
+    for(uint32 Index = 0;
+        Index < Cube->Count;
+        ++Index)
+    {
+        vertex *Vertex = Cube->Vertices + Index;
+        *Vertex = Vertices[Index];
+    }
+    Cube->ICount = 0; 
+    
+    CreateSphereModel(GameState, 1.0f, 20, 20);
+    
     AllocateArena(&GameState->Entities, Megabyte(2));
     GameState->Player.Entity = (entity *)PushStruct(&GameState->Entities, entity);
     GameState->Player.Entity->Pos = {0.0f, 0.0f, -10.0f};
@@ -129,13 +203,11 @@ void Setup(game_state *GameState)
     GameState->Player.Entity->Axis = {1.0f, 1.0f, 1.0f};
     GameState->Player.Entity->Scale = {1.0f, 1.0f, 1.0f};
     GameState->Player.Entity->Type = PLAYER;
+    GameState->Player.Speed  = 10.0f;
     GenerateAABB(GameState->Player.Entity);
     
-    LoadSceneLayout(GameState);
-    CreateSphereModel(GameState, 1.0f, 10, 10);
-    
     AllocateArena(&GameState->Collisions, Megabyte(2));
-    
+    LoadSceneLayout(GameState);
 }
 
 void MovePlayer(game_state *GameState, input *Input, float dt)
@@ -149,18 +221,11 @@ void MovePlayer(game_state *GameState, input *Input, float dt)
     v3 Right; 
     gb_vec3_cross(&Right, Camera->Eye, {0.0f, 1.0f, 0.0f});
     
-#if 0
-    if(Input->MoveVertical > 0) Velocity += (Camera->Eye * v3{1.0f, 0.0f, 1.0f} * dt * Speed);
-    if(Input->MoveVertical < 0) Velocity -= (Camera->Eye * v3{1.0f, 0.0f, 1.0f} * dt * Speed);
-    if(Input->MoveHorizontal > 0) Velocity -= (Right  * v3{1.0f, 0.0f, 1.0f} * dt * Speed);
-    if(Input->MoveHorizontal < 0) Velocity += (Right  * v3{1.0f, 0.0f, 1.0f} * dt * Speed);
-#else 
     v3 ZMove = (Input->MoveVertical * Camera->Eye);
     v3 XMove = (-(Input->MoveHorizontal * Right));
     v3 NullY = v3{1.0f, 0.0f, 1.0f};
     real32 Increment = dt * Speed;
     Velocity += (ZMove + XMove) * NullY * Increment;
-#endif 
     
     // TODO(Barret5Ocal): Aim Acceleration??? 
     real32 CamSpeed = 10.0f;
@@ -341,6 +406,8 @@ model *SeekModel(memory_arena *Models, int Index)
         Seek += sizeof(model);
         int VCount = Model->Count; 
         Seek += VCount * sizeof(vertex);
+        if(Model->ICount)
+            Seek += Model->ICount * sizeof(uint32);
     }
     
     return (model *)Seek; 

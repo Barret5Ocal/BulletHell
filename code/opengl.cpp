@@ -137,67 +137,12 @@ GLuint LoadVAO(model *Model)
 
 void LoadAssets(memory_arena *Models)
 {
-    AllocateArena(Models, Megabyte(2));
-    model *Cube = (model *)PushStruct(Models, model);
-    Cube->Count = 36; 
-    Cube->Vertices = (vertex *)PushArray(Models, Cube->Count, vertex);
-    //vertex vertices[]
-    
-    vertex Vertices[] = {
-        {-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f},
-        {0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f},
-        {0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f},
-        {0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f},
-        {-0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f},
-        {-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f},
-        
-        {-0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f},
-        {0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f},
-        {0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f},
-        {0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f},
-        {-0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f},
-        {-0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f},
-        
-        {-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f},
-        {-0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f},
-        {-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f},
-        {-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f},
-        {-0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f},
-        {-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f},
-        
-        {0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f},
-        {0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f},
-        {0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f},
-        {0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f},
-        {0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f},
-        {0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f},
-        
-        {-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f},
-        {0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f},
-        {0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f},
-        {0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f},
-        {-0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f},
-        {-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f},
-        
-        {-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f},
-        {0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f},
-        {0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f},
-        {0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f},
-        {-0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f},
-        {-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f}
-    };
-    for(uint32 Index = 0;
-        Index < Cube->Count;
-        ++Index)
-    {
-        vertex *Vertex = Cube->Vertices + Index;
-        *Vertex = Vertices[Index];
-    }
     //uint32 VCount = ArrayCount(vertices);
     
     //memcpy(Cube->Vertices, vertices, sizeof(vertices));
     //Cube->Count = VCount;
     //cubeVAO = LoadVAO(Cube);
+    
     
     char *VertexShaderSource = 
         R"Ver(
@@ -435,7 +380,16 @@ void RunRenderBuffer(v2 ScreenDim, float dt, memory_arena *RenderBuffer)
         glUniformMatrix4fv(ViewMatID, 1, GL_FALSE, &MVP.View.e[0]);
         glUniformMatrix4fv(ProjectMatID, 1, GL_FALSE, &MVP.Projection.e[0]);
         glUniformMatrix4fv(ModelMatID, 1, GL_FALSE, &MVP.Model.e[0]);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        
+        //glPolygonMode(GL_FRONT, GL_LINE);
+        //glPolygonMode(GL_BACK, GL_LINE);
+        if(!Element->Model->ICount)
+            glDrawArrays(GL_TRIANGLES, 0, Element->Model->Count);
+        else 
+            glDrawElements(GL_QUADS, Element->Model->ICount, GL_UNSIGNED_INT, Element->Model->Indices);
+        // Turn off wireframe mode
+        //glPolygonMode(GL_FRONT, GL_FILL);
+        //glPolygonMode(GL_BACK, GL_FILL);
     }
     
     Setup->Count = 0;

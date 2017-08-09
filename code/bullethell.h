@@ -9,6 +9,8 @@ struct model
 {
     uint32 Count;
     vertex *Vertices;
+    uint32 ICount;
+    uint32 *Indices; 
 };
 
 struct render_setup
@@ -85,11 +87,14 @@ struct player
 {
     camera Camera;
     entity *Entity;
+    real32 Speed;
 };
 
 struct bullet
 {
     entity *Entity;
+    v3 Direction;
+    real32 Speed; 
 };
 
 struct game_state
