@@ -106,4 +106,5 @@ struct game_state
     memory_arena Entities;
     memory_arena Models;
     memory_arena Collisions;
+    dynamic_arena Bullets; 
 };

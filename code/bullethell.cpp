@@ -208,6 +208,8 @@ void Setup(game_state *GameState)
     
     AllocateArena(&GameState->Collisions, Megabyte(2));
     LoadSceneLayout(GameState);
+    
+    AllocateDynamic(&GameState->Bullets, Megabyte(1), sizeof(bullet));
 }
 
 void MovePlayer(game_state *GameState, input *Input, float dt)
@@ -413,9 +415,18 @@ model *SeekModel(memory_arena *Models, int Index)
     return (model *)Seek; 
 }
 
+void LauchBullets(game_state *GameState, input *Input)
+{
+    if (Input->LeftMouseClick)
+    {
+        
+    }
+}
+
 void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderBuffer)
 {
     
+    LauchBullets(GameState, Input);
     MovePlayer(GameState, Input, dt);
     
     TestCollision((entity *)GameState->Entities.Memory, GameState->Entities.Used/sizeof(entity), &GameState->Collisions);
@@ -451,6 +462,7 @@ void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderB
         ++Setup->Count;
     }
     
+#if 0
     render_element *Element = (render_element *)PushStruct(RenderBuffer, render_element);
     Element->Type = 0;
     Element->Scale = {1.0f, 1.0f, 1.0f};
@@ -466,6 +478,6 @@ void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderB
     };
     Element->Model = SeekModel(&GameState->Models, 1);
     ++Setup->Count;
-    int i =0;
+#endif 
 }
 
