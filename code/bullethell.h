@@ -103,8 +103,9 @@ struct game_state
     
     memory_arena SceneArena;
     scene_layout *Scene1; 
-    memory_arena Entities;
     memory_arena Models;
     memory_arena Collisions;
     dynamic_arena Bullets; 
+    //memory_arena Entities;
+    dynamic_arena Entities;
 };

@@ -45,7 +45,8 @@ typedef double real64;
 
 int Running = 1; 
 int ActiveApp = 1;
-v2 RawMouse;
+//v2 RawMouse;
+int LeftMouse;
 LRESULT CALLBACK WindowProc(HWND   Window,
                             UINT   Message,
                             WPARAM WParam,
@@ -84,6 +85,11 @@ LRESULT CALLBACK WindowProc(HWND   Window,
                 }
             }
         }break;
+        case WM_LBUTTONDOWN: 
+        {
+            LeftMouse = 1;
+        }break;
+#if 0
         case WM_INPUT: 
         {
             UINT dwSize;
@@ -117,7 +123,8 @@ LRESULT CALLBACK WindowProc(HWND   Window,
             }
             delete[] lpb; 
             
-        }break; 
+        }break;
+#endif 
         default:
         {
             Result = DefWindowProc(Window, Message, WParam, LParam);
@@ -210,8 +217,10 @@ WinMain(HINSTANCE Instance,
             
             OldInput = NewInput;
             NewInput = {};
+            NewInput.RightTrigger = LeftMouse;
             if(ActiveApp)
                 Win32GetInput(&NewInput, &OldInput, Dim, &GameState);
+            LeftMouse = 0;
             
             Update(&GameState, &NewInput, dt, &RenderBuffer);
             

@@ -104,8 +104,23 @@ void *PushSize(dynamic_arena *Arena)
     return Result; 
 }
 
-void RemoveSize(dynamic_arena *Arena, uint8 *MemoryElement)
+void RemoveSize(dynamic_arena *Arena, void *MemoryElement)
 {
-    
+    if(MemoryElement && Arena->AmountStored)
+    {
+        for(uint32 Index = 0;
+            Index < Arena->Size / Arena->TypeSize;
+            ++Index)
+        {
+            uint8 *Element = Arena->Memory + (Index * Arena->TypeSize);
+            if (Element == MemoryElement)
+            {
+                uint32 *MemIndex = Arena->MemoryFills + Index;
+                *MemIndex = 0;
+                --Arena->AmountStored;
+            }
+        }
+        
+    }
 }
 

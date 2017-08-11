@@ -361,6 +361,7 @@ void RunRenderBuffer(v2 ScreenDim, float dt, memory_arena *RenderBuffer)
     {
         
         render_element *Element = FirstElement + Index;
+        
         if(Element->Model != CurrentModel)
         {
             GLuint VAO = LoadVAO(Element->Model);

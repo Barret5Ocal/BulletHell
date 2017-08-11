@@ -39,21 +39,20 @@ struct input
     {
         struct 
         {
-            real32 MoveVertical;
-            real32 MoveHorizontal;
-            
-            real32 CameraVertical;
-            real32 CameraHorizontal;
-            
+            int RightTrigger;
+            int LeftTrigger; 
         };
-        int E[4];
+        int E[2];
     };
+    
+    real32 MoveVertical;
+    real32 MoveHorizontal;
+    
+    real32 CameraVertical;
+    real32 CameraHorizontal;
     
     gbVec2 MousePos; 
     gbVec2 MouseMove;
-    
-    int LeftMouseClick;
-    int RightMouseClick;
 };
 
 int Win32IsDown(int Code)
@@ -87,11 +86,11 @@ void Win32GetInput(input *Input, input *OldInput, win32_windowdim Dim, game_stat
     POINT Point = {}; 
     GetCursorPos(&Point);
     
-    v2 Pos = {(real32)Point.x - Dim.x, ((real32)Point.y - Dim.y)};
+    v2 Pos = {(real32)Point.x - (Dim.x + Dim.Width/2), ((real32)Point.y - (Dim.y + Dim.Height/2))};
     
     Input->MouseMove = Pos; 
     
-    SetCursorPos(Dim.x, Dim.y);
+    SetCursorPos(Dim.x + (Dim.Width/2), Dim.y + (Dim.Height/2));
     
 #if 0
     char Buffer[100] = {};
