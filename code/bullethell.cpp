@@ -90,21 +90,26 @@ void GenerateAABB(entity *Entity)
     
 }
 
-void InitLevelBlock(game_state *GameState, v3 Pos, float Angle, v3 Axis, v3 Scale, model *Model, uint32 Type)
+entity *InitEntity(game_state *GameState, uint32 Type, v3 Pos, real32 Angle, v3 Axis, v3 Scale, model *Model)
 {
-    level_block *Block = (level_block *)PushStruct(&GameState->SceneArena, level_block);
-    //entity *Entity = (entity *)PushStruct(&GameState->Entities, entity);
     entity *Entity = (entity *)PushSize(&GameState->Entities);
-    
-    Block->Entity = Entity; 
-    Block->Type = BOX; 
+    Entity->Type = Type; 
     Entity->Pos = Pos;
     Entity->Angle = Angle;
     Entity->Axis = Axis;
     Entity->Scale = Scale;
     Entity->Model = Model;
-    Entity->Type = Type;
-    GenerateAABB(Entity);
+    GenerateAABB( Entity);
+    Entity->ID = GameState->IDCount++;
+    
+    return Entity; 
+}
+
+void InitLevelBlock(game_state *GameState, v3 Pos, float Angle, v3 Axis, v3 Scale, model *Model, uint32 Type)
+{
+    level_block *Block = (level_block *)PushStruct(&GameState->SceneArena, level_block);
+    //entity *Entity = (entity *)PushStruct(&GameState->Entities, entity);
+    entity *Entity = InitEntity(GameState, BOX, Pos, Angle, Axis, Scale, Model);
     
 }
 
@@ -196,26 +201,20 @@ void Setup(game_state *GameState)
     CreateSphereModel(GameState, 1.0f, 20, 20);
     
     //AllocateArena(&GameState->Entities, Megabyte(2));
-    AllocateDynamic(&GameState->Entities, Megabyte(1), sizeof(entity));
+    AllocateDynamic(&GameState->Entities, Megabyte(2), sizeof(entity));
     
     //GameState->Player.Entity = (entity *)PushStruct(&GameState->Entities, entity);
-    GameState->Player.Entity = (entity *)PushSize(&GameState->Entities);
-    GameState->Player.Entity->Pos = {0.0f, 0.0f, -10.0f};
+    GameState->Player.Entity = InitEntity(GameState, PLAYER, {0.0f, 0.0f, -10.0f}, 0, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, (model *)GameState->Models.Memory);
+    //(entity *)PushSize(&GameState->Entities);
     GameState->Player.Camera.Eye = {0.0f, 0.0f, 1.0f};
     // TODO(Barret5Ocal): pretend its a cube for now. make player model later
-    GameState->Player.Entity->Model = (model *)GameState->Models.Memory;
-    GameState->Player.Entity->Angle = 0;
-    GameState->Player.Entity->Axis = {1.0f, 1.0f, 1.0f};
-    GameState->Player.Entity->Scale = {1.0f, 1.0f, 1.0f};
-    GameState->Player.Entity->Type = PLAYER;
     GameState->Player.Speed  = 10.0f;
-    GenerateAABB(GameState->Player.Entity);
     GameState->Player.Entity->Model = 0;
     
     AllocateArena(&GameState->Collisions, Megabyte(2));
     LoadSceneLayout(GameState);
     
-    AllocateDynamic(&GameState->Bullets, Megabyte(1), sizeof(bullet));
+    AllocateDynamic(&GameState->Bullets, Megabyte(2), sizeof(bullet));
 }
 
 void MovePlayer(game_state *GameState, input *Input, float dt)
@@ -258,21 +257,20 @@ void MovePlayer(game_state *GameState, input *Input, float dt)
 
 void MoveBullets(game_state *GameState, float dt)
 {
-    uint32 Index = 0;
+    bullet *Bullet = (bullet *)GameState->Bullets.Memory; 
+    
     for(uint32 Amount = 0;
         Amount < GameState->Bullets.AmountStored;
         ++Amount)
     {
-        while(!(GameState->Bullets.MemoryFills + Amount))
-            ++Index;
+        while(!Bullet->ID)
+            ++Bullet;
         
-        bullet *Bullet = (bullet *)GameState->Bullets.Memory + Index; 
         v3 Velocity = {};
         Velocity = Bullet->Direction * Bullet->Speed * dt; 
         Bullet->Entity->Velocity = -Velocity; 
-        ++Index;
+        ++Bullet;
     }
-    
 }
 
 int32 AabbIntersection(aabb AABB1, aabb AABB2)
@@ -387,7 +385,7 @@ void ResolveCollision(collision *Collisions, int32 CollisionSize, game_state *Ga
                 {
                     case LEVEL_BLOCK:
                     {
-                        v3 Reflect = {};
+                        //v3 Reflect = {};
                         
                         //gb_vec3_reflect(&Reflect, Entity->Velocity, );
                         Entity->Velocity = {};
@@ -408,46 +406,49 @@ void ResolveCollision(collision *Collisions, int32 CollisionSize, game_state *Ga
                 {
                     case LEVEL_BLOCK:
                     {
-                        uint32 Index = 0;
+                        bullet *Bullet = (bullet *)Bullets->Memory;
+                        
                         for(uint32 Amount = 0;
                             Amount < Bullets->AmountStored;
                             ++Amount)
                         {
-                            while(!(Bullets->MemoryFills + Amount))
-                                ++Index;
+                            while(!Bullet->ID)
+                                ++Bullet;
                             
-                            bullet *Bullet = (bullet *)Bullets->Memory + Index;
-                            if(Bullet->Entity == Entity)
+                            if(Bullet->Entity->ID == Entity->ID)
                             {
-                                RemoveSize(Bullets, Bullet);
+                                RemoveSize(Bullets, Bullet->ID);
                                 break;
                             }
-                            ++Index;
+                            ++Bullet;
                         }
                         
-                        RemoveSize(Entities, (void *)Entity);
+                        RemoveSize(Entities, Entity->ID);
                     }break;
                     case PLAYER:
                     {
                         // TODO(Barret5Ocal): make sure bullets don't disappear if they touch the player that fired them
-                        uint32 Index = 0;
+                        bullet *Bullet = (bullet *)Bullets->Memory;
                         for(uint32 Amount = 0;
                             Amount < Bullets->AmountStored;
                             ++Amount)
                         {
-                            while(!(Bullets->MemoryFills + Amount))
-                                ++Index;
+                            while(!Bullet->ID)
+                                ++Bullet;
                             
-                            bullet *Bullet = (bullet *)Bullets->Memory + Index;
-                            if(Bullet->Entity == Entity)
+                            if(Bullet->Entity->ID == Entity->ID)
                             {
-                                RemoveSize(Bullets, Bullet);
+                                RemoveSize(Bullets, Bullet->ID);
                                 break;
                             }
-                            ++Index;
+                            ++Bullet;
                         }
                         
-                        RemoveSize(Entities, (void *)Entity);
+                        RemoveSize(Entities, Entity->ID);
+                    }break;
+                    case BULLET:
+                    {
+                        
                     }break;
                     default:
                     {
@@ -467,17 +468,16 @@ void ResolveCollision(collision *Collisions, int32 CollisionSize, game_state *Ga
 
 void ApplyVelocity(game_state *GameState)
 {
-    uint32 Index = 0;
+    entity *Entity = (entity *)GameState->Entities.Memory;
     for(uint32 Amount = 0;
         Amount < GameState->Entities.AmountStored;
         ++Amount)
     {
-        while(!(GameState->Entities.MemoryFills + Amount))
-            ++Index;
+        while(!Entity->ID)
+            ++Entity;
         
-        entity *Entity = (entity *)GameState->Entities.Memory + Index;
         Entity->Pos += Entity->Velocity;
-        ++Index;
+        ++Entity;
     }
     
 }
@@ -510,18 +510,34 @@ void LauchBullets(game_state *GameState, input *Input)
         dynamic_arena *Entities = &GameState->Entities;
         
         bullet *Bullet = (bullet *)PushSize(Bullets);
-        Bullet->Entity = (entity *)PushSize(Entities);
+        *Bullet = {};
+        Bullet->Entity = InitEntity(GameState, BULLET, -(Player->Entity->Pos + (Camera->Eye * 3.0f)), 0, {1.0f,1.0f,1.0f}, {1.0f,1.0f,1.0f}, SeekModel(&GameState->Models, 1));//(entity *)PushSize(Entities);
         
         Bullet->Direction = Camera->Eye;
         Bullet->Speed = 30;
-        Bullet->Entity->Type = BULLET; 
-        Bullet->Entity->Pos = -(Player->Entity->Pos + (Camera->Eye * 3.0f));
-        Bullet->Entity->Angle = 0;
-        Bullet->Entity->Axis = {1.0f,1.0f,1.0f};
-        Bullet->Entity->Scale = {1.0f,1.0f,1.0f};
-        Bullet->Entity->Model = SeekModel(&GameState->Models, 1);
-        GenerateAABB(Bullet->Entity);
+        Bullet->ID = GameState->IDCountB++;
     }
+}
+
+void RemoveBulletsOutofRange(dynamic_arena *Bullets, dynamic_arena *Entities,  real32 Range)
+{
+    bullet *Bullet = (bullet *)Bullets->Memory;
+    for(uint32 Amount = 0;
+        Amount < Bullets->AmountStored;
+        ++Amount)
+    {
+        while(!Bullet->ID)
+            ++Bullet;
+        
+        ++Bullet->AliveTime; 
+        if(Bullet->Entity->Pos.x > Range || Bullet->Entity->Pos.x < -Range ||Bullet->Entity->Pos.y > Range || Bullet->Entity->Pos.y < -Range ||Bullet->Entity->Pos.z > Range || Bullet->Entity->Pos.z < -Range)
+        {
+            RemoveSize(Entities, Bullet->Entity->ID);
+            RemoveSize(Bullets, Bullet->ID);
+        }
+        ++Bullet;
+    }
+    
 }
 
 void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderBuffer)
@@ -535,21 +551,21 @@ void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderB
     ResolveCollision( (collision *)GameState->Collisions.Memory, GameState->Collisions.Used/sizeof(collision), GameState);
     
     ApplyVelocity(GameState);
+    RemoveBulletsOutofRange(&GameState->Bullets, &GameState->Entities, 200.0f);
     
     render_setup *Setup = (render_setup *)PushStruct(RenderBuffer, render_setup);
     *Setup = {};
     Setup->CameraPos = GameState->Player.Entity->Pos;
     Setup->ViewDir = GameState->Player.Camera.Eye;
     
-    uint32 Index = 0;
+    entity *Entity = (entity *)GameState->Entities.Memory;
     for(uint32 Amount = 0;
         Amount < GameState->Entities.AmountStored;
         ++Amount)
     {
-        while(!(GameState->Entities.MemoryFills + Amount))
-            ++Index;
+        while(!Entity->ID)
+            ++Entity;
         
-        entity *Entity = (entity *)GameState->Entities.Memory + Index;
         if(Entity->Model)
         {
             render_element *Element = (render_element *)PushStruct(RenderBuffer, render_element);
@@ -568,8 +584,24 @@ void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderB
             Element->Model = Entity->Model;
             ++Setup->Count;
         }
-        ++Index;
+        ++Entity;
     }
     
+    if(Input->Debug)
+        int i = 0;
+#if 0
+    int Count = 0;
+    while(Count < 100)
+    {
+        dynamic_arena *Bullets = &GameState->Bullets;
+        bullet *Bullet = (bullet *)PushSize(Bullets);
+        Bullet->Speed = Count; 
+        if(Count > 50)
+            RemoveSize(Bullets, (bullet *)Bullets->Memory + Count - 50);
+        ++Count;
+    }
+    
+    int i =0;
+#endif
 }
 

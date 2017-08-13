@@ -55,6 +55,7 @@ enum entity_type
 
 struct entity 
 {
+    uint32 ID;
     uint32 Type;
     v3 Pos;
     real32 Angle;
@@ -92,9 +93,11 @@ struct player
 
 struct bullet
 {
+    uint32 ID;
     entity *Entity;
     v3 Direction;
     real32 Speed; 
+    uint32 AliveTime; 
 };
 
 struct game_state
@@ -105,7 +108,12 @@ struct game_state
     scene_layout *Scene1; 
     memory_arena Models;
     memory_arena Collisions;
+    
+    uint32 IDCountB = 1; 
     dynamic_arena Bullets; 
     //memory_arena Entities;
+    
+    uint32 IDCount = 1; 
     dynamic_arena Entities;
+    //memory_arena Velocities; 
 };

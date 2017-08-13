@@ -41,8 +41,10 @@ struct input
         {
             int RightTrigger;
             int LeftTrigger; 
+            
+            int Debug; 
         };
-        int E[2];
+        int E[3];
     };
     
     real32 MoveVertical;
@@ -66,6 +68,8 @@ int Win32IsDown(int Code)
 
 void Win32GetInput(input *Input, input *OldInput, win32_windowdim Dim, game_state *GameState)
 {
+    Input->Debug = Win32IsDown(0x51);
+    
     // NOTE(Barret5Ocal): Pay attention to what you type these 
     real32  MoveUp = Win32IsDown(0x57);
     real32  MoveDown = -Win32IsDown(0x53);

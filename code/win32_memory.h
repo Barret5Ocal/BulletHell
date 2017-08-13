@@ -61,8 +61,8 @@ void AllocateArena(memory_arena *Arena, size_t Size)
 struct dynamic_arena
 {
     uint32 TypeSize;
-    uint32 AmountStored;
-    uint32 *MemoryFills;
+    uint32 AmountStored = 0;
+    //int32 *MemoryFills;
     uint8 *Memory;
     uint32 Size; 
 };
@@ -73,14 +73,6 @@ void AllocateDynamic(dynamic_arena *Arena, size_t Size, size_t TypeSize)
     Arena->TypeSize = TypeSize;
     Arena->AmountStored = 0;
     Arena->Memory =(uint8 *)VirtualAlloc(0, Arena->Size, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
-    Arena->MemoryFills =(uint32 *)VirtualAlloc(0, Arena->Size, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
-    
-    for(uint32 *Index = Arena->MemoryFills;
-        Index < Arena->MemoryFills + (Arena->Size / sizeof(uint32));
-        ++Index)
-    {
-        *Index = 0;
-    }
     
 }
 
@@ -88,13 +80,12 @@ void *PushSize(dynamic_arena *Arena)
 {
     void *Result  = 0;
     for(uint32 Index = 0;
-        Index < (Arena->Size / sizeof(uint32));
+        Index < (Arena->Size / sizeof(Arena->TypeSize));
         ++Index)
     {
-        if(!*(Arena->MemoryFills + Index))
+        uint32 *Element =  (uint32 *)(Arena->Memory + (Index * Arena->TypeSize));
+        if(!(*Element))
         {
-            uint32 *UIndex = Arena->MemoryFills + Index;
-            *UIndex = 1; 
             Result = Arena->Memory + (Index * Arena->TypeSize);
             ++Arena->AmountStored; 
             break; 
@@ -104,20 +95,20 @@ void *PushSize(dynamic_arena *Arena)
     return Result; 
 }
 
-void RemoveSize(dynamic_arena *Arena, void *MemoryElement)
+void RemoveSize(dynamic_arena *Arena, uint32 ID)
 {
-    if(MemoryElement && Arena->AmountStored)
+    if(Arena->AmountStored)
     {
         for(uint32 Index = 0;
             Index < Arena->Size / Arena->TypeSize;
             ++Index)
         {
-            uint8 *Element = Arena->Memory + (Index * Arena->TypeSize);
-            if (Element == MemoryElement)
+            uint32 *Element = (uint32 *)(Arena->Memory + (Index * Arena->TypeSize));
+            if (*Element == ID)
             {
-                uint32 *MemIndex = Arena->MemoryFills + Index;
-                *MemIndex = 0;
+                *Element = 0;
                 --Arena->AmountStored;
+                break;
             }
         }
         
