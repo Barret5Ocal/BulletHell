@@ -228,6 +228,15 @@ WinMain(HINSTANCE Instance,
             RunRenderBuffer(ScreenDim, dt, &RenderBuffer);
             
             Win32RenderFrame(Window, Dim.Width, Dim.Height);
+            
+            
+            
+#if 1
+            char Buffer[100] = {};
+            stbsp_sprintf(Buffer, "Ent: %d Bul: %d\n", GameState.Entities.AmountStored, GameState.Bullets.AmountStored);
+            OutputDebugStringA(Buffer);
+#endif 
+            
         }
         
     }

@@ -93,6 +93,7 @@ void GenerateAABB(entity *Entity)
 entity *InitEntity(game_state *GameState, uint32 Type, v3 Pos, real32 Angle, v3 Axis, v3 Scale, model *Model)
 {
     entity *Entity = (entity *)PushSize(&GameState->Entities);
+    *Entity = {};
     Entity->Type = Type; 
     Entity->Pos = Pos;
     Entity->Angle = Angle;
@@ -111,6 +112,44 @@ void InitLevelBlock(game_state *GameState, v3 Pos, float Angle, v3 Axis, v3 Scal
     //entity *Entity = (entity *)PushStruct(&GameState->Entities, entity);
     entity *Entity = InitEntity(GameState, BOX, Pos, Angle, Axis, Scale, Model);
     
+}
+
+model *SeekModel(memory_arena *Models, int Index)
+{
+    uint8 *Seek = (uint8 *)Models->Memory;
+    for(uint32 i = 0; 
+        i < Index; 
+        ++i)
+    {
+        model *Model = (model *)Seek;
+        Seek += sizeof(model);
+        int VCount = Model->Count; 
+        Seek += VCount * sizeof(vertex);
+        if(Model->ICount)
+            Seek += Model->ICount * sizeof(uint32);
+    }
+    
+    return (model *)Seek; 
+}
+
+void InitBullet(game_state *GameState)
+{
+    player *Player  = &GameState->Player;
+    camera *Camera = &Player->Camera; 
+    dynamic_arena *Bullets = &GameState->Bullets;
+    
+    bullet *Bullet = (bullet *)PushSize(Bullets);
+    *Bullet = {};
+    Bullet->Entity = InitEntity(GameState, BULLET, -(Player->Entity->Pos + (Camera->Eye * 3.0f)), 0, {1.0f,1.0f,1.0f}, {1.0f,1.0f,1.0f}, SeekModel(&GameState->Models, 1));
+    Bullet->Direction = Camera->Eye;
+    Bullet->Speed = 30;
+    Bullet->ID = GameState->IDCountB++;
+}
+
+void DestroyBullet(game_state *GameState, bullet* Bullet)
+{
+    RemoveSize(&GameState->Entities, Bullet->Entity->ID);
+    RemoveSize(&GameState->Bullets, Bullet->ID);
 }
 
 scene_layout *LoadSceneLayout(game_state *GameState)
@@ -315,24 +354,29 @@ struct collision
     aabb AABB2;
 };
 
-void TestCollision(entity *Entities, uint32 Count, memory_arena *Collisions)
+
+void TestCollision(dynamic_arena *Entities,  memory_arena *Collisions)
 {
     ResetArena(Collisions);
     
+    entity *Entity1 = (entity *)Entities->Memory; 
     for(uint32 Index = 0;
-        Index < Count;
+        Index < Entities->AmountStored;
         ++Index)
     {
-        entity *Entity1 = Entities + Index;
-        //Entity1->Pos += Entity1->Velocity;
+        while(!Entity1->ID)
+            ++Entity1;
         
+        entity *Entity2 = (entity *)Entities->Memory; 
         for (uint32 Index2 = 0;
-             Index2 < Count;
+             Index2 < Entities->AmountStored;
              ++Index2)
         {
-            if(Index != Index2)
+            while(!Entity2->ID)
+                ++Entity2;
+            
+            if(Entity1->ID != Entity2->ID)
             {
-                entity *Entity2 = Entities + Index2;
                 aabb AABB1 = Entity1->Aabb; 
                 aabb AABB2 = Entity2->Aabb;
                 AABB1.centre += Entity1->Pos + Entity1->Velocity; 
@@ -352,7 +396,9 @@ void TestCollision(entity *Entities, uint32 Count, memory_arena *Collisions)
                     
                 }
             }
+            ++Entity2;
         }
+        ++Entity1;
     }
 }
 
@@ -417,13 +463,12 @@ void ResolveCollision(collision *Collisions, int32 CollisionSize, game_state *Ga
                             
                             if(Bullet->Entity->ID == Entity->ID)
                             {
-                                RemoveSize(Bullets, Bullet->ID);
+                                DestroyBullet(GameState, Bullet);
                                 break;
                             }
                             ++Bullet;
                         }
                         
-                        RemoveSize(Entities, Entity->ID);
                     }break;
                     case PLAYER:
                     {
@@ -438,13 +483,12 @@ void ResolveCollision(collision *Collisions, int32 CollisionSize, game_state *Ga
                             
                             if(Bullet->Entity->ID == Entity->ID)
                             {
-                                RemoveSize(Bullets, Bullet->ID);
+                                DestroyBullet(GameState, Bullet);
                                 break;
                             }
                             ++Bullet;
                         }
                         
-                        RemoveSize(Entities, Entity->ID);
                     }break;
                     case BULLET:
                     {
@@ -482,44 +526,15 @@ void ApplyVelocity(game_state *GameState)
     
 }
 
-model *SeekModel(memory_arena *Models, int Index)
-{
-    uint8 *Seek = (uint8 *)Models->Memory;
-    for(uint32 i = 0; 
-        i < Index; 
-        ++i)
-    {
-        model *Model = (model *)Seek;
-        Seek += sizeof(model);
-        int VCount = Model->Count; 
-        Seek += VCount * sizeof(vertex);
-        if(Model->ICount)
-            Seek += Model->ICount * sizeof(uint32);
-    }
-    
-    return (model *)Seek; 
-}
-
 void LauchBullets(game_state *GameState, input *Input)
 {
     if (Input->RightTrigger)
     {
-        player *Player  = &GameState->Player;
-        camera *Camera = &Player->Camera; 
-        dynamic_arena *Bullets = &GameState->Bullets;
-        dynamic_arena *Entities = &GameState->Entities;
-        
-        bullet *Bullet = (bullet *)PushSize(Bullets);
-        *Bullet = {};
-        Bullet->Entity = InitEntity(GameState, BULLET, -(Player->Entity->Pos + (Camera->Eye * 3.0f)), 0, {1.0f,1.0f,1.0f}, {1.0f,1.0f,1.0f}, SeekModel(&GameState->Models, 1));//(entity *)PushSize(Entities);
-        
-        Bullet->Direction = Camera->Eye;
-        Bullet->Speed = 30;
-        Bullet->ID = GameState->IDCountB++;
+        InitBullet(GameState);
     }
 }
 
-void RemoveBulletsOutofRange(dynamic_arena *Bullets, dynamic_arena *Entities,  real32 Range)
+void RemoveBulletsOutofRange(game_state *GameState, dynamic_arena *Bullets, dynamic_arena *Entities,  real32 Range)
 {
     bullet *Bullet = (bullet *)Bullets->Memory;
     for(uint32 Amount = 0;
@@ -532,8 +547,8 @@ void RemoveBulletsOutofRange(dynamic_arena *Bullets, dynamic_arena *Entities,  r
         ++Bullet->AliveTime; 
         if(Bullet->Entity->Pos.x > Range || Bullet->Entity->Pos.x < -Range ||Bullet->Entity->Pos.y > Range || Bullet->Entity->Pos.y < -Range ||Bullet->Entity->Pos.z > Range || Bullet->Entity->Pos.z < -Range)
         {
-            RemoveSize(Entities, Bullet->Entity->ID);
-            RemoveSize(Bullets, Bullet->ID);
+            DestroyBullet(GameState, Bullet);
+            
         }
         ++Bullet;
     }
@@ -547,11 +562,11 @@ void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderB
     LauchBullets(GameState, Input);
     MoveBullets(GameState, dt);
     
-    TestCollision((entity *)GameState->Entities.Memory, GameState->Entities.AmountStored, &GameState->Collisions);
-    ResolveCollision( (collision *)GameState->Collisions.Memory, GameState->Collisions.Used/sizeof(collision), GameState);
+    TestCollision(&GameState->Entities, &GameState->Collisions);
+    ResolveCollision((collision *)GameState->Collisions.Memory, GameState->Collisions.Used/sizeof(collision), GameState);
     
     ApplyVelocity(GameState);
-    RemoveBulletsOutofRange(&GameState->Bullets, &GameState->Entities, 200.0f);
+    RemoveBulletsOutofRange(GameState, &GameState->Bullets, &GameState->Entities, 200.0f);
     
     render_setup *Setup = (render_setup *)PushStruct(RenderBuffer, render_setup);
     *Setup = {};
@@ -593,15 +608,17 @@ void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderB
     int Count = 0;
     while(Count < 100)
     {
-        dynamic_arena *Bullets = &GameState->Bullets;
-        bullet *Bullet = (bullet *)PushSize(Bullets);
-        Bullet->Speed = Count; 
+        InitBullet(GameState);
         if(Count > 50)
-            RemoveSize(Bullets, (bullet *)Bullets->Memory + Count - 50);
+        {
+            bullet *Bullet = (bullet *)GameState->Bullets.Memory + Count - 50;
+            
+            DestroyBullet(GameState, Bullet);
+        }
         ++Count;
     }
     
-    int i =0;
+    int i = 0;
 #endif
 }
 
