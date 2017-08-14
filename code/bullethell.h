@@ -37,8 +37,7 @@ struct render_element
 {
     uint32 Type;
     v3 Position;
-    v3 Axis;
-    float Angle;
+    quaternion Quaternion;
     v3 Scale;
     render_material Material;
     model  *Model;
@@ -58,8 +57,7 @@ struct entity
     uint32 ID;
     uint32 Type;
     v3 Pos;
-    real32 Angle;
-    v3 Axis;
+    quaternion Quaternion;
     v3 Scale;
     v3 Velocity;
     aabb Aabb;

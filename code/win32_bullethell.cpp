@@ -9,6 +9,7 @@ typedef gbVec2 v2;
 typedef gbVec3 v3;
 typedef gbVec4 v4;
 typedef gbMat4 m4;
+typedef gbQuat quaternion;
 
 #include <stdint.h>
 typedef int8_t int8;
@@ -42,6 +43,8 @@ typedef double real64;
 #include "bullethell.h"
 #include "win32_opengl.h"
 #include "opengl.cpp"
+
+//#include "UI_win32.h"
 
 int Running = 1; 
 int ActiveApp = 1;
@@ -204,6 +207,9 @@ WinMain(HINSTANCE Instance,
         time_info TimeInfo = {};
         float FrameRate = 60;
         float dt = 1 / FrameRate; 
+        win32_windowdim Dim = Win32GetWindowDim(Window);
+        //Win32InitGUI(Dim.Width, Dim.Height, dt);
+        
         while(RunLoop(&TimeInfo, Running, FrameRate))
         {
             MSG Message; 
@@ -213,7 +219,7 @@ WinMain(HINSTANCE Instance,
                 DispatchMessage(&Message);
             }
             
-            win32_windowdim Dim = Win32GetWindowDim(Window);
+            Dim = Win32GetWindowDim(Window);
             
             OldInput = NewInput;
             NewInput = {};
@@ -226,6 +232,8 @@ WinMain(HINSTANCE Instance,
             
             v2 ScreenDim = {(float)Dim.Width, (float)Dim.Height};
             RunRenderBuffer(ScreenDim, dt, &RenderBuffer);
+            
+            //Win32RunGUI(NewInput.RightTrigger, NewInput.MousePos.e);
             
             Win32RenderFrame(Window, Dim.Width, Dim.Height);
             

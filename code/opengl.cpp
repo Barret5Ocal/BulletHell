@@ -258,7 +258,7 @@ struct matrix_set
     m4 View;
 };
 
-void SetMatrix(matrix_set *MVP, v3 PosObj, v3 Scale,  v3 Axis, float Angle, v3 CamPos, v3 ViewDir, float FoV, v2 ScreenDim, float dt)
+void SetMatrix(matrix_set *MVP, v3 PosObj, v3 Scale, quaternion Quaternion, v3 CamPos, v3 ViewDir, float FoV, v2 ScreenDim, float dt)
 {
     
     gb_mat4_perspective(&MVP->Projection, FoV, ScreenDim.x / ScreenDim.y, 0.1f, 150.0f);
@@ -313,10 +313,11 @@ void SetMatrix(matrix_set *MVP, v3 PosObj, v3 Scale,  v3 Axis, float Angle, v3 C
     gb_mat4_identity(&MVP->Model);
     m4 ModelTrans;
     gb_mat4_translate(&ModelTrans, {PosObj.x, PosObj.y,  PosObj.z});
+    
     m4 ModelRotate; 
     gb_mat4_identity(&ModelRotate);
+    gb_mat4_from_quat(&ModelRotate, Quaternion);
     
-    gb_mat4_rotate(&ModelRotate, Axis, Angle);
     m4 ModelScale;
     gb_mat4_scale(&ModelScale, Scale);
     MVP->Model = ModelTrans * ModelScale * ModelRotate; 
@@ -370,7 +371,7 @@ void RunRenderBuffer(v2 ScreenDim, float dt, memory_arena *RenderBuffer)
         }
         
         matrix_set MVP;
-        SetMatrix(&MVP, Element->Position, Element->Scale, Element->Axis, Element->Angle, Setup->CameraPos, Setup->ViewDir, 45.0f, ScreenDim, dt);
+        SetMatrix(&MVP, Element->Position, Element->Scale, Element->Quaternion, Setup->CameraPos, Setup->ViewDir, 45.0f, ScreenDim, dt);
         
         render_material *RenMaterial = &Element->Material;
         glUniform3f(Material.Ambient, RenMaterial->Ambient.x, RenMaterial->Ambient.y,RenMaterial->Ambient.z); 

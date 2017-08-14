@@ -41,7 +41,8 @@ void GenerateAABB(entity *Entity)
 {
     uint32 Count = Entity->Model->Count;
     m4 Rotate;
-    gb_mat4_rotate(&Rotate, Entity->Axis, gb_to_radians(Entity->Angle));
+    
+    gb_mat4_from_quat(&Rotate, Entity->Quaternion);
     m4 Scale;
     gb_mat4_scale(&Scale, Entity->Scale);
     
@@ -96,8 +97,7 @@ entity *InitEntity(game_state *GameState, uint32 Type, v3 Pos, real32 Angle, v3 
     *Entity = {};
     Entity->Type = Type; 
     Entity->Pos = Pos;
-    Entity->Angle = Angle;
-    Entity->Axis = Axis;
+    Entity->Quaternion = gb_quat_axis_angle({1.0f,1.0f,1.0f}, 0);
     Entity->Scale = Scale;
     Entity->Model = Model;
     GenerateAABB( Entity);
@@ -228,6 +228,7 @@ void Setup(game_state *GameState)
         {-0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f},
         {-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f}
     };
+    
     for(uint32 Index = 0;
         Index < Cube->Count;
         ++Index)
@@ -238,6 +239,27 @@ void Setup(game_state *GameState)
     Cube->ICount = 0; 
     
     CreateSphereModel(GameState, 1.0f, 20, 20);
+    
+    vertex SquareV[] =
+    {
+        {-0.5f, 0.5f, 0.0f, 0.0f, -1.0f,  0.0f},
+        {0.5f, 0.5f, 0.0f, 0.0f, -1.0f,  0.0f},
+        {-0.5f, -0.5f, 0.0f, 0.0f, -1.0f,  0.0f},
+        {0.5f, 0.5f, 0.0f, 0.0f, -1.0f,  0.0f},
+        {-0.5f, -0.5f, 0.0f, 0.0f, -1.0f,  0.0f},
+        {0.5f, -0.5f, 0.0f, 0.0f, -1.0f,  0.0f},
+    };
+    model *Square = (model *)PushStruct(Models, model);
+    Square->Count = 6; 
+    Square->Vertices = (vertex *)PushArray(Models, Cube->Count, vertex);
+    for(uint32 Index = 0;
+        Index < Square->Count;
+        ++Index)
+    {
+        vertex *Vertex = Square->Vertices + Index;
+        *Vertex = SquareV[Index];
+    }
+    Square->ICount = 0; 
     
     //AllocateArena(&GameState->Entities, Megabyte(2));
     AllocateDynamic(&GameState->Entities, Megabyte(2), sizeof(entity));
@@ -548,7 +570,6 @@ void RemoveBulletsOutofRange(game_state *GameState, dynamic_arena *Bullets, dyna
         if(Bullet->Entity->Pos.x > Range || Bullet->Entity->Pos.x < -Range ||Bullet->Entity->Pos.y > Range || Bullet->Entity->Pos.y < -Range ||Bullet->Entity->Pos.z > Range || Bullet->Entity->Pos.z < -Range)
         {
             DestroyBullet(GameState, Bullet);
-            
         }
         ++Bullet;
     }
@@ -587,8 +608,7 @@ void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderB
             
             Element->Scale =  Entity->Scale;
             Element->Position =  Entity->Pos;
-            Element->Angle =  Entity->Angle;
-            Element->Axis =  Entity->Axis;
+            Element->Quaternion =  Entity->Quaternion;
             Element->Material = 
             {
                 {1.0f, 0.5f, 0.31f},
