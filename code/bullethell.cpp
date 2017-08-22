@@ -276,15 +276,19 @@ void Setup(game_state *GameState)
     LoadSceneLayout(GameState);
     
     AllocateDynamic(&GameState->Bullets, Megabyte(2), sizeof(bullet));
+    
+    AllocateArena(&GameState->Velocities, Kilobyte(5));
 }
 
 void MovePlayer(game_state *GameState, input *Input, float dt)
 {
-    v3 Velocity = {}; 
+    velocity *Velocity = (velocity *)PushStruct(&GameState->Velocities, velocity); 
+    *Velocity = {}; 
     
     real32 Speed = 10.0f; 
     player *Player  = &GameState->Player;
     camera *Camera = &Player->Camera; 
+    Velocity->Entity = Player->Entity;  
     
     v3 Right; 
     gb_vec3_cross(&Right, Camera->Eye, {0.0f, 1.0f, 0.0f});
@@ -293,7 +297,7 @@ void MovePlayer(game_state *GameState, input *Input, float dt)
     v3 XMove = (-(Input->MoveHorizontal * Right));
     v3 NullY = v3{1.0f, 0.0f, 1.0f};
     real32 Increment = dt * Speed;
-    Velocity += (ZMove + XMove) * NullY * Increment;
+    Velocity->Velocity += (ZMove + XMove) * NullY * Increment;
     
     // TODO(Barret5Ocal): Aim Acceleration??? 
     real32 CamSpeed = 10.0f;
@@ -313,7 +317,8 @@ void MovePlayer(game_state *GameState, input *Input, float dt)
     v3 Gravity = {0.0f, 1.0f, 0.0f};
     //Velocity += Gravity;
     
-    Player->Entity->Velocity = Velocity;
+    Player->Entity->Velocity = Velocity->Velocity;
+    
 }
 
 void MoveBullets(game_state *GameState, float dt)
@@ -327,9 +332,13 @@ void MoveBullets(game_state *GameState, float dt)
         while(!Bullet->ID)
             ++Bullet;
         
-        v3 Velocity = {};
-        Velocity = Bullet->Direction * Bullet->Speed * dt; 
-        Bullet->Entity->Velocity = -Velocity; 
+        velocity *Velocity = (velocity *)PushStruct(&GameState->Velocities, velocity); 
+        *Velocity = {}; 
+        Velocity->Entity = Bullet->Entity;
+        
+        
+        Velocity->Velocity = -(Bullet->Direction * Bullet->Speed * dt); 
+        Bullet->Entity->Velocity = Velocity->Velocity; 
         ++Bullet;
     }
 }
@@ -376,18 +385,19 @@ struct collision
     aabb AABB2;
 };
 
-
-void TestCollision(dynamic_arena *Entities,  memory_arena *Collisions)
+// TODO(Barret5Ocal): Several things. Raytracing, debug graphics. I also want to try to do the velocity buffer again. I will still need to store the velocity in the entity due to momentum, but if I only test collision between objects that are moving and all objects, it might reduce the number of loops I do.
+void TestCollision(dynamic_arena *Entities,  memory_arena *Collisions, memory_arena *Velocities)
 {
     ResetArena(Collisions);
     
-    entity *Entity1 = (entity *)Entities->Memory; 
+    velocity *Velocity = (velocity *)Velocities->Memory; 
     for(uint32 Index = 0;
-        Index < Entities->AmountStored;
+        Index < Velocities->Used / sizeof(velocity);
         ++Index)
     {
-        while(!Entity1->ID)
-            ++Entity1;
+        
+        entity *Entity1 = (Velocity +  Index)->Entity;
+        
         
         entity *Entity2 = (entity *)Entities->Memory; 
         for (uint32 Index2 = 0;
@@ -420,8 +430,10 @@ void TestCollision(dynamic_arena *Entities,  memory_arena *Collisions)
             }
             ++Entity2;
         }
-        ++Entity1;
+        
     }
+    
+    
 }
 
 void ResolveCollision(collision *Collisions, int32 CollisionSize, game_state *GameState)
@@ -578,12 +590,12 @@ void RemoveBulletsOutofRange(game_state *GameState, dynamic_arena *Bullets, dyna
 
 void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderBuffer)
 {
-    
+    ResetArena(&GameState->Velocities);
     MovePlayer(GameState, Input, dt);
     LauchBullets(GameState, Input);
     MoveBullets(GameState, dt);
     
-    TestCollision(&GameState->Entities, &GameState->Collisions);
+    TestCollision(&GameState->Entities, &GameState->Collisions, &GameState->Velocities);
     ResolveCollision((collision *)GameState->Collisions.Memory, GameState->Collisions.Used/sizeof(collision), GameState);
     
     ApplyVelocity(GameState);
@@ -624,21 +636,6 @@ void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderB
     
     if(Input->Debug)
         int i = 0;
-#if 0
-    int Count = 0;
-    while(Count < 100)
-    {
-        InitBullet(GameState);
-        if(Count > 50)
-        {
-            bullet *Bullet = (bullet *)GameState->Bullets.Memory + Count - 50;
-            
-            DestroyBullet(GameState, Bullet);
-        }
-        ++Count;
-    }
     
-    int i = 0;
-#endif
 }
 

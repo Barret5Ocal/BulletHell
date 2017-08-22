@@ -64,6 +64,12 @@ struct entity
     model *Model;
 };
 
+struct velocity 
+{
+    entity *Entity;
+    v3 Velocity; 
+};
+
 struct level_block
 {
     uint32 Type; 
@@ -98,6 +104,7 @@ struct bullet
     uint32 AliveTime; 
 };
 
+
 struct game_state
 {
     player Player;
@@ -113,5 +120,5 @@ struct game_state
     
     uint32 IDCount = 1; 
     dynamic_arena Entities;
-    //memory_arena Velocities; 
+    memory_arena Velocities; 
 };
