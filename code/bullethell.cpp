@@ -110,7 +110,7 @@ void InitLevelBlock(game_state *GameState, v3 Pos, float Angle, v3 Axis, v3 Scal
 {
     level_block *Block = (level_block *)PushStruct(&GameState->SceneArena, level_block);
     //entity *Entity = (entity *)PushStruct(&GameState->Entities, entity);
-    entity *Entity = InitEntity(GameState, BOX, Pos, Angle, Axis, Scale, Model);
+    entity *Entity = InitEntity(GameState, LEVEL_BLOCK, Pos, Angle, Axis, Scale, Model);
     
 }
 
@@ -282,13 +282,11 @@ void Setup(game_state *GameState)
 
 void MovePlayer(game_state *GameState, input *Input, float dt)
 {
-    velocity *Velocity = (velocity *)PushStruct(&GameState->Velocities, velocity); 
-    *Velocity = {}; 
+    v3 Velocity = {}; 
     
     real32 Speed = 10.0f; 
     player *Player  = &GameState->Player;
     camera *Camera = &Player->Camera; 
-    Velocity->Entity = Player->Entity;  
     
     v3 Right; 
     gb_vec3_cross(&Right, Camera->Eye, {0.0f, 1.0f, 0.0f});
@@ -297,7 +295,7 @@ void MovePlayer(game_state *GameState, input *Input, float dt)
     v3 XMove = (-(Input->MoveHorizontal * Right));
     v3 NullY = v3{1.0f, 0.0f, 1.0f};
     real32 Increment = dt * Speed;
-    Velocity->Velocity += (ZMove + XMove) * NullY * Increment;
+    Velocity += (ZMove + XMove) * NullY * Increment;
     
     // TODO(Barret5Ocal): Aim Acceleration??? 
     real32 CamSpeed = 10.0f;
@@ -317,8 +315,14 @@ void MovePlayer(game_state *GameState, input *Input, float dt)
     v3 Gravity = {0.0f, 1.0f, 0.0f};
     //Velocity += Gravity;
     
-    Player->Entity->Velocity = Velocity->Velocity;
+    Player->Entity->Velocity = Velocity;
     
+    if(gb_vec3_mag2(Velocity))
+    {
+        velocity *Entry = (velocity *)PushStruct(&GameState->Velocities, velocity); 
+        Entry->Entity = Player->Entity;  
+        Entry->Velocity = Velocity; 
+    }
 }
 
 void MoveBullets(game_state *GameState, float dt)
@@ -341,6 +345,23 @@ void MoveBullets(game_state *GameState, float dt)
         Bullet->Entity->Velocity = Velocity->Velocity; 
         ++Bullet;
     }
+}
+
+int32 AabbIntersectionPoint(aabb AABB, v3 Point)
+{
+    real32 MinX = AABB.centre.x - AABB.half_size.x;
+    real32 MinY = AABB.centre.y - AABB.half_size.y;
+    real32 MinZ = AABB.centre.z - AABB.half_size.z;
+    real32 MaxX = AABB.centre.x + AABB.half_size.x;
+    real32 MaxY = AABB.centre.y + AABB.half_size.y;
+    real32 MaxZ = AABB.centre.z + AABB.half_size.z;
+    
+    if(MinX <= Point.x && MaxX >= Point.x &&
+       MinY <= Point.y && MaxY >= Point.y &&
+       MinZ <= Point.z && MaxZ >= Point.z) 
+        return 1;
+    
+    return 0;
 }
 
 int32 AabbIntersection(aabb AABB1, aabb AABB2)
@@ -383,7 +404,77 @@ struct collision
     
     entity *Entity2;
     aabb AABB2;
+    
+    v3 PointOfContact;
 };
+
+struct raycat_result
+{
+    entity *Hit;
+    v3 HitPos;
+};
+
+// TODO(Barret5Ocal): How do I test this for accuracy
+int32 Raycast(raycat_result *Raycast, entity *Raycaster, v3 Direction, real32 Length, dynamic_arena *Entities)
+{
+    v3 RayFull = Direction * Length; 
+    float RayFullLength = gb_vec3_mag(RayFull);
+    v3 Seg = Direction * 0.1f; 
+    
+    entity *Entity = (entity *)Entities->Memory; 
+    for (uint32 Index = 0;
+         Index < Entities->AmountStored;
+         ++Index)
+    {
+        while(!Entity->ID)
+            ++Entity;
+        
+        if(Raycaster->ID != Entity->ID)
+        {
+            v3 PrevRayPos = {};
+            v3 Test = {};
+            v3 Pos = Raycaster->Pos;
+            
+            while(gb_vec3_mag(Test) < RayFullLength) 
+            {
+                real32 TestLength = gb_vec3_mag(Test);
+                v3 RayPos = Pos + Test;
+                aabb AABB = Entity->Aabb;
+                AABB.centre += Entity->Pos; 
+                if(AabbIntersectionPoint(AABB, RayPos))
+                {
+                    Raycast->Hit = Entity; 
+                    Raycast->HitPos = RayPos; 
+                    
+                    v3 SegTest = PrevRayPos;
+                    v3 Delta = RayPos - PrevRayPos;
+                    
+                    for(uint32 Segmentor = 0; 
+                        Segmentor < 8; 
+                        ++Segmentor)
+                    {
+                        Delta *= 0.5f; 
+                        SegTest += Delta;
+                        if(AabbIntersectionPoint(AABB, SegTest))
+                        {
+                            SegTest -= Delta;
+                        }
+                    }
+                    
+                    Raycast->HitPos = SegTest; 
+                    
+                    return 1; 
+                }
+                
+                PrevRayPos = RayPos; 
+                Test += Seg;
+            }
+        }
+        ++Entity;
+    }
+    
+    return 0;
+}
 
 // TODO(Barret5Ocal): Several things. Raytracing, debug graphics. I also want to try to do the velocity buffer again. I will still need to store the velocity in the entity due to momentum, but if I only test collision between objects that are moving and all objects, it might reduce the number of loops I do.
 void TestCollision(dynamic_arena *Entities,  memory_arena *Collisions, memory_arena *Velocities)
@@ -398,39 +489,64 @@ void TestCollision(dynamic_arena *Entities,  memory_arena *Collisions, memory_ar
         
         entity *Entity1 = (Velocity +  Index)->Entity;
         
-        
-        entity *Entity2 = (entity *)Entities->Memory; 
-        for (uint32 Index2 = 0;
-             Index2 < Entities->AmountStored;
-             ++Index2)
+        if(Entity1->Type == PLAYER)
         {
-            while(!Entity2->ID)
-                ++Entity2;
-            
-            if(Entity1->ID != Entity2->ID)
+            raycat_result RaycastResult = {};
+            v3 NormVel;
+            gb_vec3_norm(&NormVel, Velocity->Velocity); 
+            real32 Length = gb_vec3_mag(Velocity->Velocity);
+            Length *= 2.0; 
+            if(Raycast(&RaycastResult, Entity1, NormVel, Length, Entities))
             {
-                aabb AABB1 = Entity1->Aabb; 
-                aabb AABB2 = Entity2->Aabb;
-                AABB1.centre += Entity1->Pos + Entity1->Velocity; 
-                AABB2.centre += Entity2->Pos + Entity2->Velocity; 
+                collision *Collision = (collision *)PushStruct(Collisions, collision);
                 
-                if(!AabbIntersection(AABB1, AABB2))
-                {
-                    collision *Collision = (collision *)PushStruct(Collisions, collision);
-                    
-                    Collision->Entity1 = Entity1;
-                    Collision->Entity2 = Entity2; 
-                    Collision->AABB1 = AABB1; 
-                    Collision->AABB2 = AABB2; 
-                }
-                else 
-                {
-                    
-                }
+                aabb AABB1 = Entity1->Aabb; 
+                aabb AABB2 = RaycastResult.Hit->Aabb;
+                AABB1.centre += Entity1->Pos + Entity1->Velocity; 
+                AABB2.centre += RaycastResult.Hit->Pos + RaycastResult.Hit->Velocity; 
+                
+                Collision->Entity1 = Entity1;
+                Collision->Entity2 = RaycastResult.Hit; 
+                Collision->AABB1 = AABB1; 
+                Collision->AABB2 = AABB2; 
+                Collision->PointOfContact = RaycastResult.HitPos;
             }
-            ++Entity2;
         }
-        
+        else 
+        {
+            entity *Entity2 = (entity *)Entities->Memory; 
+            for (uint32 Index2 = 0;
+                 Index2 < Entities->AmountStored;
+                 ++Index2)
+            {
+                while(!Entity2->ID)
+                    ++Entity2;
+                
+                if(Entity1->ID != Entity2->ID)
+                {
+                    aabb AABB1 = Entity1->Aabb; 
+                    aabb AABB2 = Entity2->Aabb;
+                    AABB1.centre += Entity1->Pos + Entity1->Velocity; 
+                    AABB2.centre += Entity2->Pos + Entity2->Velocity; 
+                    
+                    if(!AabbIntersection(AABB1, AABB2))
+                    {
+                        collision *Collision = (collision *)PushStruct(Collisions, collision);
+                        
+                        Collision->Entity1 = Entity1;
+                        Collision->Entity2 = Entity2; 
+                        Collision->AABB1 = AABB1; 
+                        Collision->AABB2 = AABB2;
+                        Collision->PointOfContact = {};
+                    }
+                    else 
+                    {
+                        
+                    }
+                }
+                ++Entity2;
+            }
+        }
     }
     
     
@@ -629,10 +745,43 @@ void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderB
                 32.0f
             };
             Element->Model = Entity->Model;
+            Element->Debug = 0;
             ++Setup->Count;
         }
         ++Entity;
     }
+    
+#if DEBUGGRAPICS
+    Entity = (entity *)GameState->Entities.Memory;
+    for(uint32 Amount = 0;
+        Amount < GameState->Entities.AmountStored;
+        ++Amount)
+    {
+        while(!Entity->ID)
+            ++Entity;
+        if(Entity->Model)
+        {
+            render_element *Element = (render_element *)PushStruct(RenderBuffer, render_element);
+            
+            v3 PropScale = Entity->Aabb.half_size * 2;
+            Element->Scale =  PropScale;
+            Element->Position =  Entity->Pos;
+            quaternion NoRot = gb_quat_identity();
+            Element->Quaternion = NoRot;
+            Element->Material = 
+            {
+                {1.0f, 0.5f, 0.31f},
+                {1.0f, 0.5f, 0.31f},
+                {0.5f, 0.5f, 0.5f},
+                32.0f
+            };
+            Element->Model = (model *)GameState->Models.Memory;
+            Element->Debug = 1;
+            ++Setup->Count;
+        }
+        ++Entity;
+    }
+#endif 
     
     if(Input->Debug)
         int i = 0;

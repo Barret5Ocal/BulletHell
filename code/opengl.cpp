@@ -61,6 +61,12 @@ GLuint Program;
 GLuint MatrixID;
 GLuint ViewPosID;
 
+GLuint WireframeProgram;
+GLuint WireframeColorID;
+GLuint WireframeModelMatID;
+GLuint WireframeViewMatID;
+GLuint WireframeProjectMatID;
+
 
 GLuint ModelMatID;
 GLuint ViewMatID;
@@ -223,7 +229,44 @@ void LoadAssets(memory_arena *Models)
         } 
         )Fra";
     
+    
+    char *WireframeVertexShaderSource = 
+        R"Ver(
+        #version 330 core 
+        layout (location = 0) in vec3 Pos;
+        layout (location = 1) in vec3 InNormal;
+        
+        uniform mat4 Model; 
+        uniform mat4 View; 
+        uniform mat4 Projection; 
+        
+        void main()
+        {
+        gl_Position = Projection * View * Model * vec4(Pos, 1.0f);
+        }
+        )Ver";
+    char *WireframeFragmentShaderSource = 
+        R"Fra(
+        #version 330 core 
+        
+        uniform vec4 Color;
+        out vec4 FragColor;
+        
+        void main()
+        {
+        
+        FragColor = Color;  
+        } 
+        )Fra";
+    
     Program = LoadShaders(VertexShaderSource, FragmentShaderSource);
+    WireframeProgram = LoadShaders(WireframeVertexShaderSource, WireframeFragmentShaderSource);
+    
+    WireframeColorID = glGetUniformLocation(WireframeProgram, "Color");
+    WireframeModelMatID = glGetUniformLocation(WireframeProgram, "Model");;
+    WireframeViewMatID = glGetUniformLocation(WireframeProgram, "View");;
+    WireframeProjectMatID = glGetUniformLocation(WireframeProgram, "Projection");;
+    
     
     ModelMatID = glGetUniformLocation(Program, "Model");
     ViewMatID = glGetUniformLocation(Program, "View");
@@ -332,23 +375,6 @@ void RunRenderBuffer(v2 ScreenDim, float dt, memory_arena *RenderBuffer)
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
-    glUseProgram(Program);
-    
-    v3 LightColor = {1.0f, 1.0f, 1.0f};
-    v3 DiffuseColor = LightColor * v3{0.5f,0.5f,0.5f};
-    v3 AmbientColor = LightColor * v3{0.2f,0.2f,0.2f};
-    glUniform3f(Light.Ambient, 0.1f, 0.1f, 0.1f); 
-    glUniform3f(Light.Diffuse, 0.8f, 0.8f, 0.8f); 
-    glUniform3f(Light.Specular, 1.0f, 1.0f, 1.0f); 
-    glUniform3f(Light.Position, -1.2f, 1.0f, -5.0f); 
-    glUniform3f(Light.Direction, -0.2f, -1.0f, -0.3f); 
-    glUniform1f(Light.CutOff, gb_to_radians(12.5f)); 
-    glUniform1f(Light.OuterCutOff, gb_to_radians(17.5f)); 
-    
-    glUniform1f(Light.Constant, 1.0f); 
-    glUniform1f(Light.Linear, 0.09f); 
-    glUniform1f(Light.Quadratic, 0.032f); 
-    
     //glBindVertexArray(cubeVAO);
     
     render_setup *Setup = (render_setup *)RenderBuffer->Memory;
@@ -370,28 +396,69 @@ void RunRenderBuffer(v2 ScreenDim, float dt, memory_arena *RenderBuffer)
             CurrentModel = Element->Model;
         }
         
+        if(!Element->Debug)
+            glUseProgram(Program);
+        else 
+            glUseProgram(WireframeProgram);
+        
         matrix_set MVP;
         SetMatrix(&MVP, Element->Position, Element->Scale, Element->Quaternion, Setup->CameraPos, Setup->ViewDir, 45.0f, ScreenDim, dt);
         
-        render_material *RenMaterial = &Element->Material;
-        glUniform3f(Material.Ambient, RenMaterial->Ambient.x, RenMaterial->Ambient.y,RenMaterial->Ambient.z); 
-        glUniform3f(Material.Diffuse, RenMaterial->Diffuse.x, RenMaterial->Diffuse.y,RenMaterial->Diffuse.z); 
-        glUniform3f(Material.Specular, RenMaterial->Specular.x, RenMaterial->Specular.y,RenMaterial->Specular.z); 
-        glUniform1f(Material.Shininess, RenMaterial->Shininess); 
+        if(!Element->Debug)
+        {
+            glUniformMatrix4fv(ViewMatID, 1, GL_FALSE, &MVP.View.e[0]);
+            glUniformMatrix4fv(ProjectMatID, 1, GL_FALSE, &MVP.Projection.e[0]);
+            glUniformMatrix4fv(ModelMatID, 1, GL_FALSE, &MVP.Model.e[0]);
+            
+            v3 LightColor = {1.0f, 1.0f, 1.0f};
+            v3 DiffuseColor = LightColor * v3{0.5f,0.5f,0.5f};
+            v3 AmbientColor = LightColor * v3{0.2f,0.2f,0.2f};
+            glUniform3f(Light.Ambient, 0.1f, 0.1f, 0.1f); 
+            glUniform3f(Light.Diffuse, 0.8f, 0.8f, 0.8f); 
+            glUniform3f(Light.Specular, 1.0f, 1.0f, 1.0f); 
+            glUniform3f(Light.Position, -1.2f, 1.0f, -5.0f); 
+            glUniform3f(Light.Direction, -0.2f, -1.0f, -0.3f); 
+            glUniform1f(Light.CutOff, gb_to_radians(12.5f)); 
+            glUniform1f(Light.OuterCutOff, gb_to_radians(17.5f)); 
+            
+            glUniform1f(Light.Constant, 1.0f); 
+            glUniform1f(Light.Linear, 0.09f); 
+            glUniform1f(Light.Quadratic, 0.032f); 
+            
+            render_material *RenMaterial = &Element->Material;
+            glUniform3f(Material.Ambient, RenMaterial->Ambient.x, RenMaterial->Ambient.y,RenMaterial->Ambient.z); 
+            glUniform3f(Material.Diffuse, RenMaterial->Diffuse.x, RenMaterial->Diffuse.y,RenMaterial->Diffuse.z); 
+            glUniform3f(Material.Specular, RenMaterial->Specular.x, RenMaterial->Specular.y,RenMaterial->Specular.z); 
+            glUniform1f(Material.Shininess, RenMaterial->Shininess); 
+            
+        }
+        else 
+        {
+            glUniformMatrix4fv(WireframeViewMatID, 1, GL_FALSE, &MVP.View.e[0]);
+            glUniformMatrix4fv(WireframeProjectMatID, 1, GL_FALSE, &MVP.Projection.e[0]);
+            glUniformMatrix4fv(WireframeModelMatID, 1, GL_FALSE, &MVP.Model.e[0]);
+            
+            glUniform4f(WireframeColorID, 0.0f, 1.0f, 0.0f, 1.0f);
+            glPolygonMode(GL_FRONT, GL_LINE);
+            glPolygonMode(GL_BACK, GL_LINE);
+            //glColor3ub(255,255,0); // bright yellow
+            
+        }
         
-        glUniformMatrix4fv(ViewMatID, 1, GL_FALSE, &MVP.View.e[0]);
-        glUniformMatrix4fv(ProjectMatID, 1, GL_FALSE, &MVP.Projection.e[0]);
-        glUniformMatrix4fv(ModelMatID, 1, GL_FALSE, &MVP.Model.e[0]);
-        
-        //glPolygonMode(GL_FRONT, GL_LINE);
-        //glPolygonMode(GL_BACK, GL_LINE);
         if(!Element->Model->ICount)
             glDrawArrays(GL_TRIANGLES, 0, Element->Model->Count);
         else 
             glDrawElements(GL_QUADS, Element->Model->ICount, GL_UNSIGNED_INT, Element->Model->Indices);
-        // Turn off wireframe mode
-        //glPolygonMode(GL_FRONT, GL_FILL);
-        //glPolygonMode(GL_BACK, GL_FILL);
+        
+        if(Element->Debug)
+        {
+            // Turn off wireframe mode
+            glPolygonMode(GL_FRONT, GL_FILL);
+            glPolygonMode(GL_BACK, GL_FILL);
+            //glColor3ub(255,255,255); // back to default white
+            
+        }
+        
     }
     
     Setup->Count = 0;

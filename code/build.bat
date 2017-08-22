@@ -6,6 +6,6 @@ pushd ..\..\build
 
 set LIBS=User32.lib Winmm.lib Gdi32.lib opengl32.lib 
 
-cl -nologo -Zi ..\project\code\win32_bullethell.cpp %LIBS%
+cl -nologo -Zi -DDEBUGGRAPICS=1 ..\project\code\win32_bullethell.cpp %LIBS%
 
 popd 

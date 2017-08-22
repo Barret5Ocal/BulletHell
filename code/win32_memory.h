@@ -115,3 +115,15 @@ void RemoveSize(dynamic_arena *Arena, uint32 ID)
     }
 }
 
+#define DynamicInterate(Interator, Arena) for (uint32 Index = 0;\
+Index < Arena->AmountStored;\
+++Index)\
+{\
+    while(!Interator->ID)\
+    ++Interator;
+    
+    
+#define DynamicInterateEnd(Interator)++Interator;\
+}
+
+

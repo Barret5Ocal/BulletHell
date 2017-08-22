@@ -20,11 +20,6 @@ struct render_setup
     v3 ViewDir;
 };
 
-enum render_type
-{
-    BOX,
-};
-
 struct render_material
 {
     v3 Ambient;
@@ -41,6 +36,7 @@ struct render_element
     v3 Scale;
     render_material Material;
     model  *Model;
+    int32 Debug; 
 };
 
 typedef gbAabb3 aabb;
