@@ -37,7 +37,7 @@ void CreateSphereModel(game_state *GameState, real32 Radius, uint32 Rings, uint3
     }
 }
 
-void GenerateAABB(entity *Entity)
+void GenerateAABB(entity *Entity, model* Shape)
 {
     uint32 Count = Entity->Model->Count;
     m4 Rotate;
@@ -88,7 +88,7 @@ void GenerateAABB(entity *Entity)
     gb_vec3_lerp(&Center, Min, Max, 0.5f);
     v3 HalfL = Max - Center;
     Entity->Aabb = {Center, HalfL};
-    
+    Entity->Aabb.Shape = Shape;
 }
 
 entity *InitEntity(game_state *GameState, uint32 Type, v3 Pos, real32 Angle, v3 Axis, v3 Scale, model *Model)
@@ -100,7 +100,7 @@ entity *InitEntity(game_state *GameState, uint32 Type, v3 Pos, real32 Angle, v3 
     Entity->Quaternion = gb_quat_axis_angle({1.0f,1.0f,1.0f}, 0);
     Entity->Scale = Scale;
     Entity->Model = Model;
-    GenerateAABB( Entity);
+    GenerateAABB( Entity, (model *)GameState->Models.Memory);
     Entity->ID = GameState->IDCount++;
     
     return Entity; 
@@ -406,15 +406,55 @@ struct collision
     aabb AABB2;
     
     v3 PointOfContact;
+    v3 Norm;
 };
 
 struct raycat_result
 {
     entity *Hit;
     v3 HitPos;
+    v3 HitNorm;
 };
 
-// TODO(Barret5Ocal): How do I test this for accuracy
+v3 GetSurfaceNormal(entity *Entity, v3 Point)
+{
+    model *Model  = Entity->Aabb.Shape;
+    v3 Result = {};
+    vertex *Face = Model->Vertices;
+    
+    v3 PointModelSpace = Point - Entity->Pos;
+    PointModelSpace = PointModelSpace / Entity->Scale;
+    
+    vertex *ResultFace; 
+    real32 Shortest = 100.0f;
+    for(uint32 FaceIndex = 0;
+        FaceIndex < Model->Count;
+        FaceIndex += 3)
+    {
+        vertex *Vertex1 = Face + FaceIndex;
+        vertex *Vertex2 = Face + FaceIndex + 1;
+        vertex *Vertex3 = Face + FaceIndex + 2;
+        
+        v3 Pos1 = Vertex1->Pos;
+        v3 Pos2 = Vertex2->Pos;
+        v3 Pos3 = Vertex3->Pos;
+        
+        v3 Delta1 = Pos1 - PointModelSpace;
+        v3 Delta2 = Pos2 - PointModelSpace;
+        v3 Delta3 = Pos3 - PointModelSpace;
+        
+        real32 Dis1 = gb_vec3_mag2(Delta1);
+        real32 Dis2 = gb_vec3_mag2(Delta2);
+        real32 Dis3 = gb_vec3_mag2(Delta3);
+        
+        real32 Added = Dis1 + Dis2 + Dis3;
+        if(Added < Shortest) {Shortest = Added; ResultFace = Vertex1;}
+    }
+    
+    Result = ResultFace->Norm;
+    return Result;
+}
+
 int32 Raycast(raycat_result *Raycast, entity *Raycaster, v3 Direction, real32 Length, dynamic_arena *Entities)
 {
     v3 RayFull = Direction * Length; 
@@ -462,7 +502,7 @@ int32 Raycast(raycat_result *Raycast, entity *Raycaster, v3 Direction, real32 Le
                     }
                     
                     Raycast->HitPos = SegTest; 
-                    
+                    Raycast->HitNorm = GetSurfaceNormal(Entity, SegTest);
                     return 1; 
                 }
                 
@@ -510,6 +550,7 @@ void TestCollision(dynamic_arena *Entities,  memory_arena *Collisions, memory_ar
                 Collision->AABB1 = AABB1; 
                 Collision->AABB2 = AABB2; 
                 Collision->PointOfContact = RaycastResult.HitPos;
+                Collision->Norm = RaycastResult.HitNorm;
             }
         }
         else 
@@ -584,7 +625,9 @@ void ResolveCollision(collision *Collisions, int32 CollisionSize, game_state *Ga
                         //v3 Reflect = {};
                         
                         //gb_vec3_reflect(&Reflect, Entity->Velocity, );
-                        Entity->Velocity = {};
+                        real32 Scalar = gb_vec3_mag(Entity->Velocity);
+                        v3 Adder = Scalar * Collision->Norm;
+                        Entity->Velocity += Adder; 
                     }break;
                     case BULLET:
                     {

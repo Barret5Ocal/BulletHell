@@ -39,7 +39,13 @@ struct render_element
     int32 Debug; 
 };
 
-typedef gbAabb3 aabb;
+//typedef gbAabb3 aabb;
+
+struct aabb
+{
+    gbVec3 centre, half_size;
+    model *Shape;
+};
 
 enum entity_type
 {
