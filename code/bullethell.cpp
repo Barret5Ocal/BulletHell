@@ -622,11 +622,9 @@ void ResolveCollision(collision *Collisions, int32 CollisionSize, game_state *Ga
                 {
                     case LEVEL_BLOCK:
                     {
-                        //v3 Reflect = {};
-                        
-                        //gb_vec3_reflect(&Reflect, Entity->Velocity, );
-                        real32 Scalar = gb_vec3_mag(Entity->Velocity);
-                        v3 Adder = Scalar * Collision->Norm;
+                        v3 Adder = {};
+                        real32 Dot = gb_vec3_dot(Collision->Norm, Entity->Velocity);
+                        Adder = Dot * (-Collision->Norm);
                         Entity->Velocity += Adder; 
                     }break;
                     case BULLET:
