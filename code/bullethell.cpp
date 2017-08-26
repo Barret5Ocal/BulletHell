@@ -109,8 +109,7 @@ entity *InitEntity(game_state *GameState, uint32 Type, v3 Pos, real32 Angle, v3 
 void InitLevelBlock(game_state *GameState, v3 Pos, float Angle, v3 Axis, v3 Scale, model *Model, uint32 Type)
 {
     level_block *Block = (level_block *)PushStruct(&GameState->SceneArena, level_block);
-    //entity *Entity = (entity *)PushStruct(&GameState->Entities, entity);
-    entity *Entity = InitEntity(GameState, LEVEL_BLOCK, Pos, Angle, Axis, Scale, Model);
+    Block->Entity = InitEntity(GameState, LEVEL_BLOCK, Pos, Angle, Axis, Scale, Model);
     
 }
 
@@ -265,7 +264,7 @@ void Setup(game_state *GameState)
     AllocateDynamic(&GameState->Entities, Megabyte(2), sizeof(entity));
     
     //GameState->Player.Entity = (entity *)PushStruct(&GameState->Entities, entity);
-    GameState->Player.Entity = InitEntity(GameState, PLAYER, {0.0f, 0.0f, -10.0f}, 0, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, (model *)GameState->Models.Memory);
+    GameState->Player.Entity = InitEntity(GameState, PLAYER, {0.0f, -5.0f, -10.0f}, 0, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, (model *)GameState->Models.Memory);
     //(entity *)PushSize(&GameState->Entities);
     GameState->Player.Camera.Eye = {0.0f, 0.0f, 1.0f};
     // TODO(Barret5Ocal): pretend its a cube for now. make player model later
@@ -311,18 +310,24 @@ void MovePlayer(game_state *GameState, input *Input, float dt)
     Camera->Eye.y = gb_sin(gb_to_radians(AngleV));
     
     
-    // NOTE(Barret5Ocal): Gravity 
-    v3 Gravity = {0.0f, 1.0f, 0.0f};
-    //Velocity += Gravity;
-    
-    Player->Entity->Velocity = Velocity;
-    
     if(gb_vec3_mag2(Velocity))
     {
         velocity *Entry = (velocity *)PushStruct(&GameState->Velocities, velocity); 
         Entry->Entity = Player->Entity;  
         Entry->Velocity = Velocity; 
     }
+    
+#if 0
+    // NOTE(Barret5Ocal): Gravity 
+    v3 Gravity = v3{0.0f, 1.0f, 0.0f} * Speed * dt;
+    velocity *Entry = (velocity *)PushStruct(&GameState->Velocities, velocity); 
+    Entry->Entity = Player->Entity;  
+    Entry->Velocity = Gravity;
+    Velocity += Gravity;
+#endif 
+    
+    Player->Entity->Velocity = Velocity;
+    
 }
 
 void MoveBullets(game_state *GameState, float dt)
@@ -407,6 +412,8 @@ struct collision
     
     v3 PointOfContact;
     v3 Norm;
+    
+    velocity *Velocity;
 };
 
 struct raycat_result
@@ -458,7 +465,7 @@ v3 GetSurfaceNormal(entity *Entity, v3 Point)
 int32 Raycast(raycat_result *Raycast, entity *Raycaster, v3 Direction, real32 Length, dynamic_arena *Entities)
 {
     v3 RayFull = Direction * Length; 
-    float RayFullLength = gb_vec3_mag(RayFull);
+    //float RayFullLength = gb_vec3_mag(RayFull);
     v3 Seg = Direction * 0.1f; 
     
     entity *Entity = (entity *)Entities->Memory; 
@@ -475,7 +482,7 @@ int32 Raycast(raycat_result *Raycast, entity *Raycaster, v3 Direction, real32 Le
             v3 Test = {};
             v3 Pos = Raycaster->Pos;
             
-            while(gb_vec3_mag(Test) < RayFullLength) 
+            while(gb_vec3_mag(Test) < Length) 
             {
                 real32 TestLength = gb_vec3_mag(Test);
                 v3 RayPos = Pos + Test;
@@ -516,7 +523,6 @@ int32 Raycast(raycat_result *Raycast, entity *Raycaster, v3 Direction, real32 Le
     return 0;
 }
 
-// TODO(Barret5Ocal): Several things. Raytracing, debug graphics. I also want to try to do the velocity buffer again. I will still need to store the velocity in the entity due to momentum, but if I only test collision between objects that are moving and all objects, it might reduce the number of loops I do.
 void TestCollision(dynamic_arena *Entities,  memory_arena *Collisions, memory_arena *Velocities)
 {
     ResetArena(Collisions);
@@ -527,7 +533,7 @@ void TestCollision(dynamic_arena *Entities,  memory_arena *Collisions, memory_ar
         ++Index)
     {
         
-        entity *Entity1 = (Velocity +  Index)->Entity;
+        entity *Entity1 = Velocity->Entity;
         
         if(Entity1->Type == PLAYER)
         {
@@ -536,8 +542,13 @@ void TestCollision(dynamic_arena *Entities,  memory_arena *Collisions, memory_ar
             gb_vec3_norm(&NormVel, Velocity->Velocity); 
             real32 Length = gb_vec3_mag(Velocity->Velocity);
             Length *= 2.0; 
+            
             if(Raycast(&RaycastResult, Entity1, NormVel, Length, Entities))
             {
+                
+                if(NormVel.x ||NormVel.z)
+                    int i = 0;
+                
                 collision *Collision = (collision *)PushStruct(Collisions, collision);
                 
                 aabb AABB1 = Entity1->Aabb; 
@@ -551,6 +562,7 @@ void TestCollision(dynamic_arena *Entities,  memory_arena *Collisions, memory_ar
                 Collision->AABB2 = AABB2; 
                 Collision->PointOfContact = RaycastResult.HitPos;
                 Collision->Norm = RaycastResult.HitNorm;
+                Collision->Velocity = Velocity;
             }
         }
         else 
@@ -575,10 +587,11 @@ void TestCollision(dynamic_arena *Entities,  memory_arena *Collisions, memory_ar
                         collision *Collision = (collision *)PushStruct(Collisions, collision);
                         
                         Collision->Entity1 = Entity1;
-                        Collision->Entity2 = Entity2; 
-                        Collision->AABB1 = AABB1; 
+                        Collision->Entity2 = Entity2;
+                        Collision->AABB1 = AABB1;
                         Collision->AABB2 = AABB2;
                         Collision->PointOfContact = {};
+                        Collision->Velocity = Velocity;
                     }
                     else 
                     {
@@ -588,6 +601,8 @@ void TestCollision(dynamic_arena *Entities,  memory_arena *Collisions, memory_ar
                 ++Entity2;
             }
         }
+        
+        ++Velocity;
     }
     
     
@@ -623,9 +638,10 @@ void ResolveCollision(collision *Collisions, int32 CollisionSize, game_state *Ga
                     case LEVEL_BLOCK:
                     {
                         v3 Adder = {};
-                        real32 Dot = gb_vec3_dot(Collision->Norm, Entity->Velocity);
+                        
+                        real32 Dot = gb_vec3_dot(Collision->Norm, Collision->Velocity->Velocity);
                         Adder = Dot * (-Collision->Norm);
-                        Entity->Velocity += Adder; 
+                        Collision->Velocity->Velocity += Adder; 
                     }break;
                     case BULLET:
                     {
@@ -703,6 +719,7 @@ void ResolveCollision(collision *Collisions, int32 CollisionSize, game_state *Ga
 
 void ApplyVelocity(game_state *GameState)
 {
+#if 0
     entity *Entity = (entity *)GameState->Entities.Memory;
     for(uint32 Amount = 0;
         Amount < GameState->Entities.AmountStored;
@@ -714,7 +731,17 @@ void ApplyVelocity(game_state *GameState)
         Entity->Pos += Entity->Velocity;
         ++Entity;
     }
-    
+#else 
+    velocity *Velocity = (velocity *)GameState->Velocities.Memory;
+    for(uint32 Index = 0;
+        Index < GameState->Velocities.Used / sizeof(velocity);
+        ++Index)
+    {
+        Velocity->Entity->Pos += Velocity->Velocity;
+        ++Velocity;
+        
+    }
+#endif 
 }
 
 void LauchBullets(game_state *GameState, input *Input)
