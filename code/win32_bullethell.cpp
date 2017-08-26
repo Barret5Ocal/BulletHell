@@ -231,7 +231,7 @@ WinMain(HINSTANCE Instance,
             Update(&GameState, &NewInput, dt, &RenderBuffer);
             
             v2 ScreenDim = {(float)Dim.Width, (float)Dim.Height};
-            RunRenderBuffer(ScreenDim, dt, &RenderBuffer);
+	            RunRenderBuffer(ScreenDim, dt, &RenderBuffer);
             
             //Win32RunGUI(NewInput.RightTrigger, NewInput.MousePos.e);
             

@@ -264,7 +264,7 @@ void Setup(game_state *GameState)
     AllocateDynamic(&GameState->Entities, Megabyte(2), sizeof(entity));
     
     //GameState->Player.Entity = (entity *)PushStruct(&GameState->Entities, entity);
-    GameState->Player.Entity = InitEntity(GameState, PLAYER, {0.0f, -5.0f, -10.0f}, 0, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, (model *)GameState->Models.Memory);
+    GameState->Player.Entity = InitEntity(GameState, PLAYER, {0.0f, -1.0f, -10.0f}, 0, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, (model *)GameState->Models.Memory);
     //(entity *)PushSize(&GameState->Entities);
     GameState->Player.Camera.Eye = {0.0f, 0.0f, 1.0f};
     // TODO(Barret5Ocal): pretend its a cube for now. make player model later
@@ -302,13 +302,15 @@ void MovePlayer(game_state *GameState, input *Input, float dt)
     static real32 AngleV = 0.0f;
     AngleH += Input->MouseMove.x * dt * CamSpeed;
     AngleV += Input->MouseMove.y * dt * CamSpeed;
-    AngleH += Input->CameraHorizontal * dt * CamSpeed * 20.0f;
-    AngleV += Input->CameraVertical * dt * CamSpeed * 20.0f;
+    //AngleH += Input->CameraHorizontal * dt * CamSpeed * 20.0f;
+    //AngleV += Input->CameraVertical * dt * CamSpeed * 20.0f;
     
+#if 1
     Camera->Eye.z = gb_cos(gb_to_radians(AngleH));
     Camera->Eye.x = gb_sin(gb_to_radians(AngleH));
     Camera->Eye.y = gb_sin(gb_to_radians(AngleV));
-    
+#endif 
+    Velocity.y += Input->CameraVertical * dt * Speed;
     
     if(gb_vec3_mag2(Velocity))
     {
@@ -360,6 +362,11 @@ int32 AabbIntersectionPoint(aabb AABB, v3 Point)
     real32 MaxX = AABB.centre.x + AABB.half_size.x;
     real32 MaxY = AABB.centre.y + AABB.half_size.y;
     real32 MaxZ = AABB.centre.z + AABB.half_size.z;
+    
+    if(MinX > MaxX){real32 Temp = MinX; MinX = MaxX; MaxX = Temp;}
+    if(MinY > MaxY){real32 Temp = MinY; MinY = MaxY; MaxY = Temp;}
+    if(MinZ > MaxZ){real32 Temp = MinZ; MinZ = MaxZ; MaxZ = Temp;}
+    
     
     if(MinX <= Point.x && MaxX >= Point.x &&
        MinY <= Point.y && MaxY >= Point.y &&
@@ -490,6 +497,8 @@ int32 Raycast(raycat_result *Raycast, entity *Raycaster, v3 Direction, real32 Le
                 AABB.centre += Entity->Pos; 
                 if(AabbIntersectionPoint(AABB, RayPos))
                 {
+                    
+                    
                     Raycast->Hit = Entity; 
                     Raycast->HitPos = RayPos; 
                     
@@ -543,11 +552,9 @@ void TestCollision(dynamic_arena *Entities,  memory_arena *Collisions, memory_ar
             real32 Length = gb_vec3_mag(Velocity->Velocity);
             Length *= 2.0; 
             
+            
             if(Raycast(&RaycastResult, Entity1, NormVel, Length, Entities))
             {
-                
-                if(NormVel.x ||NormVel.z)
-                    int i = 0;
                 
                 collision *Collision = (collision *)PushStruct(Collisions, collision);
                 
@@ -738,6 +745,7 @@ void ApplyVelocity(game_state *GameState)
         ++Index)
     {
         Velocity->Entity->Pos += Velocity->Velocity;
+        Velocity->Velocity = {};
         ++Velocity;
         
     }

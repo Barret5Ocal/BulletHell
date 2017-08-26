@@ -378,7 +378,6 @@ void RunRenderBuffer(v2 ScreenDim, float dt, memory_arena *RenderBuffer)
     //glBindVertexArray(cubeVAO);
     
     render_setup *Setup = (render_setup *)RenderBuffer->Memory;
-    glUniform3f(ViewPosID, Setup->CameraPos.x, Setup->CameraPos.y, Setup->CameraPos.z); 
     
     render_element *FirstElement = (render_element *)(Setup + 1);
     model *CurrentModel = 0; 
@@ -406,6 +405,8 @@ void RunRenderBuffer(v2 ScreenDim, float dt, memory_arena *RenderBuffer)
         
         if(!Element->Debug)
         {
+            glUniform3f(ViewPosID, Setup->CameraPos.x, Setup->CameraPos.y, Setup->CameraPos.z); 
+            
             glUniformMatrix4fv(ViewMatID, 1, GL_FALSE, &MVP.View.e[0]);
             glUniformMatrix4fv(ProjectMatID, 1, GL_FALSE, &MVP.Projection.e[0]);
             glUniformMatrix4fv(ModelMatID, 1, GL_FALSE, &MVP.Model.e[0]);
