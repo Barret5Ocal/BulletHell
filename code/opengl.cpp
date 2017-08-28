@@ -309,7 +309,7 @@ void SetMatrix(matrix_set *MVP, v3 PosObj, v3 Scale, quaternion Quaternion, v3 C
     m4 CamRot; 
     gb_mat4_identity(&CamRot);
     
-    
+#if 1
     v3 Target = ViewDir;
     //v3 Target = {0.0f, 0.0f, 0.0f};
     //v3 For = Target - CamPos; 
@@ -352,6 +352,13 @@ void SetMatrix(matrix_set *MVP, v3 PosObj, v3 Scale, quaternion Quaternion, v3 C
     gb_mat4_identity(&CamTran);
     
     MVP->View = CamTran * CamRot;
+#else 
+    v3 Right;
+    v3 Up;
+    gb_vec3_cross(&Right, ViewDir, {0.0f, 1.0f, 0.0f});
+    gb_vec3_cross(&Up, ViewDir, Right);
+    gb_mat4_look_at(&MVP->View, CamPos, ViewDir, {0.0f, 1.0f, 0.0f});//Up);
+#endif 
     
     gb_mat4_identity(&MVP->Model);
     m4 ModelTrans;

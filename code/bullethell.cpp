@@ -139,7 +139,9 @@ void InitBullet(game_state *GameState)
     
     bullet *Bullet = (bullet *)PushSize(Bullets);
     *Bullet = {};
-    Bullet->Entity = InitEntity(GameState, BULLET, -(Player->Entity->Pos + (Camera->Eye * 3.0f)), 0, {1.0f,1.0f,1.0f}, {1.0f,1.0f,1.0f}, SeekModel(&GameState->Models, 1));
+    v3 Corrected = Player->Entity->Pos;
+    //Corrected.y *= -1; 
+    Bullet->Entity = InitEntity(GameState, BULLET, -(Corrected + (Camera->Eye * 3.0f)), 0, {1.0f,1.0f,1.0f}, {1.0f,1.0f,1.0f}, SeekModel(&GameState->Models, 1));
     Bullet->Direction = Camera->Eye;
     Bullet->Speed = 30;
     Bullet->ID = GameState->IDCountB++;
@@ -264,7 +266,7 @@ void Setup(game_state *GameState)
     AllocateDynamic(&GameState->Entities, Megabyte(2), sizeof(entity));
     
     //GameState->Player.Entity = (entity *)PushStruct(&GameState->Entities, entity);
-    GameState->Player.Entity = InitEntity(GameState, PLAYER, {0.0f, -1.0f, -10.0f}, 0, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, (model *)GameState->Models.Memory);
+    GameState->Player.Entity = InitEntity(GameState, PLAYER, {0.0f, 0.0f, -10.0f}, 0, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, (model *)GameState->Models.Memory);
     //(entity *)PushSize(&GameState->Entities);
     GameState->Player.Camera.Eye = {0.0f, 0.0f, 1.0f};
     // TODO(Barret5Ocal): pretend its a cube for now. make player model later
@@ -301,7 +303,7 @@ void MovePlayer(game_state *GameState, input *Input, float dt)
     static real32 AngleH = 0.0f;
     static real32 AngleV = 0.0f;
     AngleH += Input->MouseMove.x * dt * CamSpeed;
-    AngleV += Input->MouseMove.y * dt * CamSpeed;
+    AngleV -= Input->MouseMove.y * dt * CamSpeed;
     //AngleH += Input->CameraHorizontal * dt * CamSpeed * 20.0f;
     //AngleV += Input->CameraVertical * dt * CamSpeed * 20.0f;
     
@@ -310,6 +312,7 @@ void MovePlayer(game_state *GameState, input *Input, float dt)
     Camera->Eye.x = gb_sin(gb_to_radians(AngleH));
     Camera->Eye.y = gb_sin(gb_to_radians(AngleV));
 #endif 
+    Camera->Eye *= -1.0f;
     Velocity.y += Input->CameraVertical * dt * Speed;
     
     if(gb_vec3_mag2(Velocity))
@@ -347,8 +350,9 @@ void MoveBullets(game_state *GameState, float dt)
         *Velocity = {}; 
         Velocity->Entity = Bullet->Entity;
         
-        
-        Velocity->Velocity = -(Bullet->Direction * Bullet->Speed * dt); 
+        v3 Corrected = Bullet->Direction;
+        //Corrected.y *= -1; 
+        Velocity->Velocity = -(Corrected * Bullet->Speed * dt); 
         Bullet->Entity->Velocity = Velocity->Velocity; 
         ++Bullet;
     }
@@ -726,19 +730,7 @@ void ResolveCollision(collision *Collisions, int32 CollisionSize, game_state *Ga
 
 void ApplyVelocity(game_state *GameState)
 {
-#if 0
-    entity *Entity = (entity *)GameState->Entities.Memory;
-    for(uint32 Amount = 0;
-        Amount < GameState->Entities.AmountStored;
-        ++Amount)
-    {
-        while(!Entity->ID)
-            ++Entity;
-        
-        Entity->Pos += Entity->Velocity;
-        ++Entity;
-    }
-#else 
+    
     velocity *Velocity = (velocity *)GameState->Velocities.Memory;
     for(uint32 Index = 0;
         Index < GameState->Velocities.Used / sizeof(velocity);
@@ -749,7 +741,7 @@ void ApplyVelocity(game_state *GameState)
         ++Velocity;
         
     }
-#endif 
+    
 }
 
 void LauchBullets(game_state *GameState, input *Input)
@@ -811,7 +803,9 @@ void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderB
             render_element *Element = (render_element *)PushStruct(RenderBuffer, render_element);
             
             Element->Scale =  Entity->Scale;
-            Element->Position =  Entity->Pos;
+            v3 Corrected = Entity->Pos;
+            //Corrected.y *= -1; 
+            Element->Position = Corrected;
             Element->Quaternion =  Entity->Quaternion;
             Element->Material = 
             {
@@ -841,7 +835,9 @@ void Update(game_state *GameState, input *Input, float dt, memory_arena *RenderB
             
             v3 PropScale = Entity->Aabb.half_size * 2;
             Element->Scale =  PropScale;
-            Element->Position =  Entity->Pos;
+            v3 Corrected = Entity->Pos;
+            //Corrected.y *= -1; 
+            Element->Position = Corrected;
             quaternion NoRot = gb_quat_identity();
             Element->Quaternion = NoRot;
             Element->Material = 
